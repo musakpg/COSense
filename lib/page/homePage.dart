@@ -9,17 +9,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fypcosense/page/signInPage.dart';
 import 'package:fypcosense/page/settingProfile.dart';
 import 'package:fypcosense/page/settingEmergency.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 
-class homePage extends StatefulWidget {
-  const homePage({Key? key}) : super(key: key);
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
 
   @override
-  _homePageState createState() => _homePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class _homePageState extends State<homePage> {
+class _HomePageState extends State<HomePage> {
   double coRate = 0;
   double previousCoRate = 0;
   String carState = '';
@@ -33,6 +35,27 @@ class _homePageState extends State<homePage> {
   void initState() {
     super.initState();
     initFirebase();
+    _loadDataPoints();
+    Workmanager().registerPeriodicTask(
+      "1",
+      "fetchCOData",
+      frequency: Duration(minutes: 15),
+    );
+  }
+
+  Future<void> _loadDataPoints() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dataPoints = prefs.getStringList('coDataPoints') ?? [];
+    setState(() {
+      coDataPoints = dataPoints.map((e) {
+        final parts = e.split(':');
+        return CODataPoint(DateTime.parse(parts[0]), double.parse(parts[1]));
+      }).toList();
+      if (coDataPoints.isNotEmpty) {
+        coRate = coDataPoints.last.coRate;
+        previousCoRate = coDataPoints.length > 1 ? coDataPoints[coDataPoints.length - 2].coRate : 0;
+      }
+    });
   }
 
   double _calculateChangePercentage(double newRate, double oldRate) {
@@ -45,68 +68,73 @@ class _homePageState extends State<homePage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Align(
-          alignment: Alignment.center,
-          child: Text(
-            'Carbon Monoxide',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 22.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+        title: Stack(
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: Text(
+                'Carbon Monoxide',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
             ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (BuildContext context) {
-                  return Container(
-                    height: MediaQuery.of(context).size.height * 0.3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ListTile(
-                          leading: Icon(Icons.person),
-                          title: Text('Profile Settings'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => SettingProfile()),
-                            );
-                          },
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: Icon(Icons.settings),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return Container(
+                        height: MediaQuery.of(context).size.height * 0.3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ListTile(
+                              leading: Icon(Icons.person),
+                              title: Text('Profile Settings'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => SettingProfile()),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              leading: Icon(Icons.contact_phone),
+                              title: Text('Emergency Contact Settings'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => EmergencySetupScreen()),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              leading: Icon(Icons.logout),
+                              title: Text('Logout'),
+                              onTap: () {
+                                _signOut();
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ],
                         ),
-                        ListTile(
-                          leading: Icon(Icons.contact_phone),
-                          title: Text('Emergency Contact Settings'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => EmergencySetupScreen()),
-                            );
-                          },
-                        ),
-                        ListTile(
-                          leading: Icon(Icons.logout),
-                          title: Text('Logout'),
-                          onTap: () {
-                            _signOut();
-                            Navigator.pop(context);
-                          },
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
-        ],
+              ),
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -260,7 +288,14 @@ class _homePageState extends State<homePage> {
           carState = 'normal';
         }
       });
+      _saveDataPoints();
     });
+  }
+
+  Future<void> _saveDataPoints() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dataPoints = coDataPoints.map((e) => '${e.time.toIso8601String()}:${e.coRate}').toList();
+    prefs.setStringList('coDataPoints', dataPoints);
   }
 
   void _showInAppNotification() async {
