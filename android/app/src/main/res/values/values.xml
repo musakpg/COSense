@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Replace the placeholder values with your actual Firebase project configurations -->
+    <string name="google_app_id">1:355497614255:android:ffb8e127cc63a670ee6d5a</string>
+    <string name="google_api_key">AIzaSyCOyKF_JTu6arbXnLm9CuUMv8h2KDSgWKw</string>
+    <string name="firebase_database_url">https://fypcosense-default-rtdb.asia-southeast1.firebasedatabase.app</string>
+    <string name="gcm_defaultSenderId">YOUR_GCM_SENDER_ID</string>
+    <string name="project_id">fypcosense</string>
+    <string name="storage_bucket">fypcosense.appspot.com</string>
+</resources>
