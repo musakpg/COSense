@@ -4,31 +4,30 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sendgrid_mailer/sendgrid_mailer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fypcosense/page/signInPage.dart';
-import 'package:fypcosense/page/settingProfile.dart'; // Import SettingProfile page
-import 'package:fypcosense/page/settingEmergency.dart'; // Import SettingEmergency page
+import 'package:fypcosense/page/settingProfile.dart';
+import 'package:fypcosense/page/settingEmergency.dart';
 
-// Constant variables for notification initialization (replace icon with your notification icon)
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 
 class homePage extends StatefulWidget {
   const homePage({Key? key}) : super(key: key);
+
   @override
   _homePageState createState() => _homePageState();
 }
 
 class _homePageState extends State<homePage> {
-  double coRate = 0; // Initial value
-  double previousCoRate = 0; // Previous CO rate to calculate the change percentage
-  String carState = ''; // Variable to hold car state
-  List<CODataPoint> coDataPoints = []; // List to hold CO data points
+  double coRate = 0;
+  double previousCoRate = 0;
+  String carState = '';
+  List<CODataPoint> coDataPoints = [];
 
-  // Initialize Firebase
   late FirebaseDatabase database;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore instance
-  final FirebaseAuth _auth = FirebaseAuth.instance; // FirebaseAuth instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -74,10 +73,10 @@ class _homePageState extends State<homePage> {
                           leading: Icon(Icons.person),
                           title: Text('Profile Settings'),
                           onTap: () {
-                            Navigator.pop(context); // Close the bottom sheet
+                            Navigator.pop(context);
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => SettingProfile()), // Navigate to profile settings screen
+                              MaterialPageRoute(builder: (context) => SettingProfile()),
                             );
                           },
                         ),
@@ -85,10 +84,10 @@ class _homePageState extends State<homePage> {
                           leading: Icon(Icons.contact_phone),
                           title: Text('Emergency Contact Settings'),
                           onTap: () {
-                            Navigator.pop(context); // Close the bottom sheet
+                            Navigator.pop(context);
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => EmergencySetupScreen()), // Navigate to emergency contact settings screen
+                              MaterialPageRoute(builder: (context) => EmergencySetupScreen()),
                             );
                           },
                         ),
@@ -96,8 +95,8 @@ class _homePageState extends State<homePage> {
                           leading: Icon(Icons.logout),
                           title: Text('Logout'),
                           onTap: () {
-                            _signOut(); // Perform logout action
-                            Navigator.pop(context); // Close the bottom sheet
+                            _signOut();
+                            Navigator.pop(context);
                           },
                         ),
                       ],
@@ -126,15 +125,27 @@ class _homePageState extends State<homePage> {
                   'CO',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 5), // Adjust the spacing between lines
+                SizedBox(height: 5),
                 Text(
                   '${coRate.toStringAsFixed(2)} PPM',
                   style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 5), // Adjust the spacing between lines
-                Text(
-                  'Now ${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}%',
-                  style: TextStyle(fontSize: 18, color: Colors.green),
+                SizedBox(height: 5),
+                Row(
+                  children: [
+                    Text(
+                      'Now',
+                      style: TextStyle(fontSize: 18, color: Colors.black),
+                    ),
+                    SizedBox(width: 5), // Adjust the spacing between the text widgets
+                    Text(
+                      '${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}%',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: _calculateChangePercentage(coRate, previousCoRate) < 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -146,6 +157,22 @@ class _homePageState extends State<homePage> {
                 _createLineData(coDataPoints),
                 animate: true,
                 dateTimeFactory: const charts.LocalDateTimeFactory(),
+                behaviors: [
+                  charts.PanAndZoomBehavior(),
+                  charts.SeriesLegend(),
+                ],
+                primaryMeasureAxis: charts.NumericAxisSpec(
+                  tickProviderSpec:
+                  charts.BasicNumericTickProviderSpec(desiredTickCount: 5),
+                ),
+                domainAxis: charts.DateTimeAxisSpec(
+                  tickFormatterSpec: charts.AutoDateTimeTickFormatterSpec(
+                    hour: charts.TimeFormatterSpec(
+                      format: 'HH:mm',
+                      transitionFormat: 'HH:mm',
+                    ),
+                  ),
+                ),
               )
                   : Center(child: Text('Loading CO Data...')),
             ),
@@ -154,7 +181,10 @@ class _homePageState extends State<homePage> {
               child: Text(
                 carState == 'danger' ? 'Danger' : 'Safe',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: carState == 'danger' ? Colors.red : Colors.green),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: carState == 'danger' ? Colors.red : Colors.green),
               ),
             ),
             if (carState == 'danger') ...[
@@ -165,12 +195,22 @@ class _homePageState extends State<homePage> {
               ),
               SizedBox(height: 10),
               Text(
-                '• Reduce your exposure to CO',
+                '   Reduce your exposure to CO',
                 style: TextStyle(fontSize: 18),
               ),
-              SizedBox(height: 5),
+              SizedBox(height: 10),
               Text(
-                '• Turn off the car and get out',
+                '   Turn off the car and get out',
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 10),
+              Text(
+                '   Call emergency services immediately',
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 10),
+              Text(
+                '   If feeling unwell, seek medical attention',
                 style: TextStyle(fontSize: 18),
               ),
               SizedBox(height: 20),
@@ -182,10 +222,11 @@ class _homePageState extends State<homePage> {
   }
 
   Future<void> sendEmail(String userEmail, String emergencyEmail, String userName) async {
-    final mailer = Mailer('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');
-    final toAddress = Address(emergencyEmail); // Use emergency email fetched from Firestore
-    final fromAddress = Address(userEmail); // Use user email fetched from FirebaseAuth
-    final content = Content('text/plain', 'Alert!!! $userName\'s vehicle is in danger'); // Use user's name in content
+    final mailer =
+    Mailer('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');
+    final toAddress = Address(emergencyEmail);
+    final fromAddress = Address(userEmail);
+    final content = Content('text/plain', 'Alert!!! $userName\'s vehicle is in danger');
     final subject = 'COSense Alert';
     final personalization = Personalization([toAddress]);
 
@@ -203,22 +244,18 @@ class _homePageState extends State<homePage> {
   Future<void> initFirebase() async {
     await Firebase.initializeApp();
     database = FirebaseDatabase.instance;
-    // Listen to changes in Firebase database
     database.reference().child('rate/coRate').onValue.listen((event) {
       final newCoRate = double.tryParse(event.snapshot.value.toString()) ?? 0;
       setState(() {
         previousCoRate = coRate;
         coRate = newCoRate;
-        // Update CO data points
         coDataPoints.add(CODataPoint(DateTime.now(), coRate));
-        // Keep only the last 100 data points for display
         if (coDataPoints.length > 100) {
           coDataPoints.removeAt(0);
         }
-        // Set car state based on coRate
-        if (coRate >= 0.20) { // Change to 0.05 ppm
+        if (coRate >= 0.20) {
           carState = 'danger';
-          _notifyEmergencyContact(); // Notify if in danger state
+          _notifyEmergencyContact();
         } else {
           carState = 'normal';
         }
@@ -226,8 +263,6 @@ class _homePageState extends State<homePage> {
     });
   }
 
-
-  // Function to display an in-app notification using flutter_local_notifications
   void _showInAppNotification() async {
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
@@ -244,12 +279,11 @@ class _homePageState extends State<homePage> {
       ),
     );
 
-    await flutterLocalNotificationsPlugin.show(0, 'High CO Level Detected', 'Please take necessary action.', notificationDetails);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'High CO Level Detected', 'Please take necessary action.', notificationDetails);
   }
 
-  // Function to display a local alert
   void _showLocalAlert() {
-    // Implement local alert using showDialog or another method to display an alert dialog
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -270,24 +304,22 @@ class _homePageState extends State<homePage> {
   }
 
   void _notifyEmergencyContact() {
-    print('CO rate exceeded 0.20 ppm. Notifying emergency contact...'); // Change to 0.05 ppm
-    _showInAppNotification(); // Alternative 6: Display in-app notification
-    _showLocalAlert(); // Alternative 7: Display local alert
+    print('CO rate exceeded 0.20 ppm. Notifying emergency contact...');
+    _showInAppNotification();
+    _showLocalAlert();
 
-    // Fetch user's data from FirebaseAuth
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      final userId = user.uid; // Get the user ID
+      final userId = user.uid;
       final userDocRef = _firestore.collection('users').doc(userId);
 
       userDocRef.get().then((userSnapshot) {
         if (userSnapshot.exists) {
-          final userName = userSnapshot.data()?['profile']['name'] ?? ''; // User's name (ensure existence)
-          final userEmail = user.email ?? ''; // Null-safe assignment
-          final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? []; // User's emergency contacts (ensure existence)
+          final userName = userSnapshot.data()?['profile']['name'] ?? '';
+          final userEmail = user.email ?? '';
+          final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? [];
 
-          // Loop through all emergency contacts
           for (var contact in emergencyContacts) {
             final contactEmail = contact['email'] ?? '';
             sendEmail(userEmail, contactEmail, userName);
@@ -305,7 +337,6 @@ class _homePageState extends State<homePage> {
     }
   }
 
-  // Function to sign out the user
   Future<void> _signOut() async {
     try {
       await _auth.signOut();
@@ -315,15 +346,14 @@ class _homePageState extends State<homePage> {
       );
     } catch (e) {
       print('Error signing out: $e');
-      // Handle sign-out errors here
     }
   }
 
-  // Create data for Line Chart
   List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
     return [
       charts.Series<CODataPoint, DateTime>(
         id: 'CO Data',
+        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
         domainFn: (CODataPoint point, _) => point.time,
         measureFn: (CODataPoint point, _) => point.coRate,
         data: dataPoints,
@@ -332,7 +362,6 @@ class _homePageState extends State<homePage> {
   }
 }
 
-// Class to represent CO data points
 class CODataPoint {
   final DateTime time;
   final double coRate;
