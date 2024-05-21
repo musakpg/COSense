@@ -51,6 +51,11 @@ class _homePageState extends State<homePage> {
           child: Text(
             'Carbon Monoxide',
             textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
         ),
         actions: [
@@ -145,9 +150,12 @@ class _homePageState extends State<homePage> {
                   : Center(child: Text('Loading CO Data...')),
             ),
             SizedBox(height: 10),
-            Text(
-              carState == 'danger' ? 'Danger' : 'Safe',
-              style: TextStyle(fontSize: 18, color: carState == 'danger' ? Colors.red : Colors.green),
+            Center(
+              child: Text(
+                carState == 'danger' ? 'Danger' : 'Safe',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: carState == 'danger' ? Colors.red : Colors.green),
+              ),
             ),
             if (carState == 'danger') ...[
               SizedBox(height: 20),
@@ -166,22 +174,6 @@ class _homePageState extends State<homePage> {
                 style: TextStyle(fontSize: 18),
               ),
               SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                    textStyle: TextStyle(fontSize: 20), // Removed color property
-                  ),
-                  onPressed: () {
-                    // Implement your emergency call action
-                  },
-                  child: Text(
-                    'Call 999',
-                    style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold), // Added text color property
-                  ),
-                ),
-              ),
             ],
           ],
         ),
