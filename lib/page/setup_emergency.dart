@@ -82,7 +82,7 @@ class _ProfileEditScreenState extends State<EmergencySetupScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const homePage(),
+            builder: (context) => const HomePage(),
           ),
         );
       });

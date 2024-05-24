@@ -189,7 +189,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => homePage(),
+                                        builder: (context) => HomePage(),
                                       ),
                                     );
                                   } else if (!rememberPassword) {
