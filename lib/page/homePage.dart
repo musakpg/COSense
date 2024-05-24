@@ -251,7 +251,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> sendEmail(String userEmail, String emergencyEmail, String userName) async {
     final mailer =
-    Mailer('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');
+    Mailer('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');
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final content = Content('text/plain', 'Alert!!! $userName\'s vehicle is in danger');
