@@ -285,6 +285,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+
   Future<void> sendEmail(
       _HomePageState state, String userEmail, String emergencyEmail, String userName) async {
     final mailer = Mailer('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');
@@ -459,5 +460,5 @@ class CODataPoint {
   final DateTime time;
   final double coRate;
 
-  CODataPoint(this.time, this.coRate);
+  CODataPoint(this.time,this.coRate);
 }
