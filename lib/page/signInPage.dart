@@ -1,9 +1,10 @@
+// signInPage.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:icons_plus/icons_plus.dart';
 import 'package:fypcosense/theme/theme.dart';
 import 'package:fypcosense/page/signUpPage.dart';
-import 'package:fypcosense/page/homePage.dart';
+import 'package:fypcosense/page/homePage.dart'; // Correct import
 import 'package:fypcosense/page/forget_password.dart'; // Import ForgotPasswordScreen
 import 'package:fypcosense/widgets/custom_scaffold.dart';
 
@@ -184,12 +185,12 @@ class _SignInScreenState extends State<SignInScreen> {
                                 ))
                                     .user;
                                 if (user != null) {
-                                  // If form is valid and rememberPassword is true, navigate to ProfileSetupScreen
+                                  // If form is valid and rememberPassword is true, navigate to HomePage
                                   if (_formSignInKey.currentState!.validate() && rememberPassword) {
-                                    Navigator.push(
+                                    Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => homePage(),
+                                        builder: (context) => const HomePage(), // Ensure HomePage() is returned correctly
                                       ),
                                     );
                                   } else if (!rememberPassword) {
@@ -203,6 +204,11 @@ class _SignInScreenState extends State<SignInScreen> {
                               } catch (e) {
                                 print(e);
                                 // handle error
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error: ${e.toString()}'),
+                                  ),
+                                );
                               }
                             },
                             child: const Text('Log in'),
@@ -283,6 +289,4 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
     );
   }
-
-  homePage() {}
 }

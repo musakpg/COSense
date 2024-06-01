@@ -11,8 +11,6 @@ import 'package:fypcosense/page/settingProfile.dart';
 import 'package:fypcosense/page/settingEmergency.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
-import 'dart:io' show Platform;
-import 'dart:math';
 
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 
@@ -24,12 +22,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  double coRate = 0; // Initial value
-  double previousCoRate = 0; // Previous CO rate to calculate the change percentage
-  String carState = ''; // Variable to hold car state
-  List<CODataPoint> coDataPoints = []; // List to hold CO data points
-  double latitude = 0; // Initial value for latitude
-  double longitude = 0; // Initial value for longitude
+  double coRate = 0;
+  double previousCoRate = 0;
+  String carState = '';
+  List<CODataPoint> coDataPoints = [];
 
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -40,22 +36,11 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     initFirebase();
     _loadDataPoints();
-    Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: true,
-    );
     Workmanager().registerPeriodicTask(
       "1",
       "fetchCOData",
       frequency: Duration(minutes: 15),
     );
-  }
-
-  static void callbackDispatcher() {
-    Workmanager().executeTask((task, inputData) async {
-      // Task code here
-      return Future.value(true);
-    });
   }
 
   Future<void> _loadDataPoints() async {
@@ -78,29 +63,8 @@ class _HomePageState extends State<HomePage> {
     return ((newRate - oldRate) / oldRate) * 100;
   }
 
-  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
-    return [
-      charts.Series<CODataPoint, DateTime>(
-        id: 'CO Data',
-        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
-        domainFn: (CODataPoint point, _) => point.time,
-        measureFn: (CODataPoint point, _) => point.coRate,
-        data: dataPoints,
-      )
-    ];
-  }
-
-  double _calculateMaxY(double maxRate) {
-    return (maxRate ~/ 10 + 1) * 10.0;
-  }
-
   @override
   Widget build(BuildContext context) {
-    double maxRate = coDataPoints.isNotEmpty
-        ? coDataPoints.map((point) => point.coRate).reduce(max)
-        : 10;
-    double maxY = _calculateMaxY(maxRate);
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -226,8 +190,8 @@ class _HomePageState extends State<HomePage> {
                   charts.SeriesLegend(),
                 ],
                 primaryMeasureAxis: charts.NumericAxisSpec(
-                  tickProviderSpec: charts.BasicNumericTickProviderSpec(desiredTickCount: 5),
-                  viewport: charts.NumericExtents(0, maxY),
+                  tickProviderSpec:
+                  charts.BasicNumericTickProviderSpec(desiredTickCount: 5),
                 ),
                 domainAxis: charts.DateTimeAxisSpec(
                   tickFormatterSpec: charts.AutoDateTimeTickFormatterSpec(
@@ -285,80 +249,47 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
-  Future<void> sendEmail(
-      _HomePageState state, String userEmail, String emergencyEmail, String userName) async {
-    final mailer = Mailer('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');
-    final toAddress = Address(emergencyEmail); // Use emergency email fetched from Firestore
-    final fromAddress = Address(userEmail); // Use user email fetched from FirebaseAuth
-    final latitude = state.latitude; // Access latitude from state parameter
-    final longitude = state.longitude; // Access longitude from state parameter
-
+  Future<void> sendEmail(String userEmail, String emergencyEmail, String userName) async {
+    final mailer =
+    Mailer('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');
+    final toAddress = Address(emergencyEmail);
+    final fromAddress = Address(userEmail);
+    final content = Content('text/plain', 'Alert!!! $userName\'s vehicle is in danger');
     final subject = 'COSense Alert';
-    final userNameFormatted = Uri.encodeComponent(userName); // Encode user name for URL
-    final locationLink = Platform.isAndroid
-        ? 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude'
-        : 'https://maps.apple.com/?q=$latitude,$longitude'; // URL to open in Google Maps or Apple Maps
-
-    final content = Content('text/html',
-        'Alert!!! $userName\'s vehicle is in danger. Location: <a href="$locationLink">Open in Maps</a>'); // Include a link to open in Maps
-
     final personalization = Personalization([toAddress]);
-    final email = Email([personalization], fromAddress, subject, content: [content]);
 
+    final email = Email([personalization], fromAddress, subject, content: [content]);
     mailer.send(email).then((result) {
       print('Email sent successfully!');
     }).catchError((error) {
       print('Error sending email: $error');
     });
-
     print('Emergency contact is: $emergencyEmail');
     print('User contact is: $userEmail');
     print('User name is: $userName');
-    print('Latitude: $latitude, Longitude: $longitude');
   }
 
   Future<void> initFirebase() async {
     await Firebase.initializeApp();
     database = FirebaseDatabase.instance;
-    // Listen to changes in Firebase database
     database.reference().child('rate/coRate').onValue.listen((event) {
       final newCoRate = double.tryParse(event.snapshot.value.toString()) ?? 0;
       setState(() {
         previousCoRate = coRate;
         coRate = newCoRate;
-        // Update CO data points
         coDataPoints.add(CODataPoint(DateTime.now(), coRate));
-        // Keep only the last 100 data points for display
         if (coDataPoints.length > 100) {
           coDataPoints.removeAt(0);
         }
-        // Set car state based on coRate
-        if (coRate >= 0.05) { // Change to 0.05 ppm
+        if (coRate >= 0.20) {
           carState = 'danger';
-          _notifyEmergencyContact(); // Notify if in danger state
+          _notifyEmergencyContact();
         } else {
           carState = 'normal';
         }
       });
+      _saveDataPoints();
     });
-
-    // Listen to changes in GPS location
-    database.reference().child('gps/latitude').onValue.listen((event) {
-      final newLatitude = double.tryParse(event.snapshot.value.toString()) ?? 0;
-      setState(() {
-        latitude = newLatitude;
-      });
-    });
-
-    database.reference().child('gps/longitude').onValue.listen((event) {
-      final newLongitude = double.tryParse(event.snapshot.value.toString()) ?? 0;
-      setState(() {
-        longitude = newLongitude;
-      });
-    });
-
-    _saveDataPoints();
   }
 
   Future<void> _saveDataPoints() async {
@@ -408,27 +339,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _notifyEmergencyContact() {
-    print('CO rate exceeded 0.20 ppm. Notifying emergency contact...'); // Change to 0.05 ppm
-    _showInAppNotification(); // Alternative 6: Display in-app notification
-    _showLocalAlert(); // Alternative 7: Display local alert
+    print('CO rate exceeded 0.20 ppm. Notifying emergency contact...');
+    _showInAppNotification();
+    _showLocalAlert();
 
-    // Fetch user's data from FirebaseAuth
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      final userId = user.uid; // Get the user ID
+      final userId = user.uid;
       final userDocRef = _firestore.collection('users').doc(userId);
 
       userDocRef.get().then((userSnapshot) {
         if (userSnapshot.exists) {
-          final userName = userSnapshot.data()?['profile']['name'] ?? ''; // User's name (ensure existence)
-          final userEmail = user.email ?? ''; // Null-safe assignment
-          final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? []; // User's emergency contacts (ensure existence)
+          final userName = userSnapshot.data()?['profile']['name'] ?? '';
+          final userEmail = user.email ?? '';
+          final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? [];
 
-          // Loop through all emergency contacts
           for (var contact in emergencyContacts) {
             final contactEmail = contact['email'] ?? '';
-            sendEmail(this, userEmail, contactEmail, userName); // Pass this as the first argument
+            sendEmail(userEmail, contactEmail, userName);
           }
 
           if (emergencyContacts.isEmpty) {
@@ -454,11 +383,23 @@ class _HomePageState extends State<HomePage> {
       print('Error signing out: $e');
     }
   }
+
+  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
+    return [
+      charts.Series<CODataPoint, DateTime>(
+        id: 'CO Data',
+        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
+        domainFn: (CODataPoint point, _) => point.time,
+        measureFn: (CODataPoint point, _) => point.coRate,
+        data: dataPoints,
+      )
+    ];
+  }
 }
 
 class CODataPoint {
   final DateTime time;
   final double coRate;
 
-  CODataPoint(this.time,this.coRate);
+  CODataPoint(this.time, this.coRate);
 }
