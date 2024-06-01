@@ -207,8 +207,13 @@ class _HomePageState extends State<HomePage> {
                         charts.SeriesLegend(),
                       ],
                       primaryMeasureAxis: charts.NumericAxisSpec(
-                        tickProviderSpec:
-                        charts.BasicNumericTickProviderSpec(desiredTickCount: 5),
+                        tickProviderSpec: charts.BasicNumericTickProviderSpec(
+                          desiredTickCount: 5,
+                        ),
+                        viewport: charts.NumericExtents(
+                          0,
+                          (coDataPoints.map((e) => e.coRate).reduce((a, b) => a > b ? a : b) ~/ 10 + 1) * 10,
+                        ),
                       ),
                       domainAxis: charts.DateTimeAxisSpec(
                         tickFormatterSpec: charts.AutoDateTimeTickFormatterSpec(
