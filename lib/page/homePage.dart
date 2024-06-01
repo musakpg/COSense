@@ -6,7 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sendgrid_mailer/sendgrid_mailer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fypcosense/page/signInPage.dart';
+import 'package:fypcosense/page/signInPage.dart'; // Ensure this import is correct
 import 'package:fypcosense/page/settingProfile.dart';
 import 'package:fypcosense/page/settingEmergency.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,11 +25,14 @@ class _HomePageState extends State<HomePage> {
   double coRate = 0;
   double previousCoRate = 0;
   String carState = '';
+  String userName = 'User'; // Define the userName variable
   List<CODataPoint> coDataPoints = [];
+  bool showArrowIcon = false;
 
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -41,6 +44,14 @@ class _HomePageState extends State<HomePage> {
       "fetchCOData",
       frequency: Duration(minutes: 15),
     );
+    _scrollController.addListener(() {
+      if (_scrollController.position.atEdge) {
+        bool isTop = _scrollController.position.pixels == 0;
+        setState(() {
+          showArrowIcon = !isTop;
+        });
+      }
+    });
   }
 
   Future<void> _loadDataPoints() async {
@@ -178,31 +189,54 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             SizedBox(height: 10),
-            Container(
-              height: 200,
-              child: coDataPoints.isNotEmpty
-                  ? charts.TimeSeriesChart(
-                _createLineData(coDataPoints),
-                animate: true,
-                dateTimeFactory: const charts.LocalDateTimeFactory(),
-                behaviors: [
-                  charts.PanAndZoomBehavior(),
-                  charts.SeriesLegend(),
-                ],
-                primaryMeasureAxis: charts.NumericAxisSpec(
-                  tickProviderSpec:
-                  charts.BasicNumericTickProviderSpec(desiredTickCount: 5),
-                ),
-                domainAxis: charts.DateTimeAxisSpec(
-                  tickFormatterSpec: charts.AutoDateTimeTickFormatterSpec(
-                    hour: charts.TimeFormatterSpec(
-                      format: 'HH:mm',
-                      transitionFormat: 'HH:mm',
-                    ),
+            Stack(
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _scrollController,
+                  child: Container(
+                    height: 200,
+                    width: coDataPoints.isNotEmpty ? 800 : double.infinity, // Adjust width as needed
+                    child: coDataPoints.isNotEmpty
+                        ? charts.TimeSeriesChart(
+                      _createLineData(coDataPoints),
+                      animate: true,
+                      dateTimeFactory: const charts.LocalDateTimeFactory(),
+                      behaviors: [
+                        charts.PanAndZoomBehavior(),
+                        charts.SeriesLegend(),
+                      ],
+                      primaryMeasureAxis: charts.NumericAxisSpec(
+                        tickProviderSpec:
+                        charts.BasicNumericTickProviderSpec(desiredTickCount: 5),
+                      ),
+                      domainAxis: charts.DateTimeAxisSpec(
+                        tickFormatterSpec: charts.AutoDateTimeTickFormatterSpec(
+                          hour: charts.TimeFormatterSpec(
+                            format: 'HH:mm',
+                            transitionFormat: 'HH:mm',
+                          ),
+                        ),
+                      ),
+                    )
+                        : Center(child: Text('Loading CO Data...')),
                   ),
                 ),
-              )
-                  : Center(child: Text('Loading CO Data...')),
+                if (showArrowIcon)
+                  Positioned(
+                    right: 0,
+                    child: IconButton(
+                      icon: Icon(Icons.arrow_forward),
+                      onPressed: () {
+                        _scrollController.animateTo(
+                          _scrollController.position.maxScrollExtent,
+                          duration: Duration(milliseconds: 500),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
             SizedBox(height: 10),
             Center(
@@ -264,136 +298,89 @@ class _HomePageState extends State<HomePage> {
     }).catchError((error) {
       print('Error sending email: $error');
     });
-    print('Emergency contact is: $emergencyEmail');
-    print('User contact is: $userEmail');
-    print('User name is: $userName');
   }
 
-  Future<void> initFirebase() async {
+  void initFirebase() async {
     await Firebase.initializeApp();
     database = FirebaseDatabase.instance;
-    database.reference().child('rate/coRate').onValue.listen((event) {
-      final newCoRate = double.tryParse(event.snapshot.value.toString()) ?? 0;
+    database
+        .reference()
+        .child('rate')
+        .onValue
+        .listen((DatabaseEvent event) {
       setState(() {
         previousCoRate = coRate;
-        coRate = newCoRate;
-        coDataPoints.add(CODataPoint(DateTime.now(), coRate));
-        if (coDataPoints.length > 100) {
+        coRate = double.tryParse(event.snapshot.value.toString()) ?? 0;
+        if (coDataPoints.length >= 100) {
           coDataPoints.removeAt(0);
         }
-        if (coRate >= 0.20) {
-          carState = 'danger';
-          _notifyEmergencyContact();
-        } else {
-          carState = 'normal';
-        }
+        _saveDataPoints();
+        carState = coRate > 100 ? 'danger' : 'safe';
       });
-      _saveDataPoints();
+      if (carState == 'danger') {
+        _triggerNotification();
+      }
     });
   }
 
   Future<void> _saveDataPoints() async {
     final prefs = await SharedPreferences.getInstance();
-    final dataPoints = coDataPoints.map((e) => '${e.time.toIso8601String()}:${e.coRate}').toList();
+    final dataPoints = coDataPoints.map((e) => '${e.time}:${e.coRate}').toList();
     prefs.setStringList('coDataPoints', dataPoints);
   }
 
-  void _showInAppNotification() async {
-    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+  void _triggerNotification() async {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+    final AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    final DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings();
+
+    final InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    const notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'high_co_channel',
-        'CO Level Alert',
-        channelDescription: 'High CO level detected in your car.',
-        importance: Importance.max,
-        priority: Priority.high,
-        ticker: 'CO Alert',
-      ),
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    AndroidNotificationDetails(
+      'your channel id',
+      'your channel name',
+      channelDescription: 'your channel description',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
     );
-
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
     await flutterLocalNotificationsPlugin.show(
-        0, 'High CO Level Detected', 'Please take necessary action.', notificationDetails);
-  }
-
-  void _showLocalAlert() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Emergency Alert'),
-          content: Text('High CO levels detected. Please take necessary action.'),
-          actions: [
-            TextButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
+      0,
+      'Alert! by CoSense',
+      '$userName vehicle reach danger level!',
+      platformChannelSpecifics,
+      payload: 'item x',
     );
   }
 
-  void _notifyEmergencyContact() {
-    print('CO rate exceeded 0.20 ppm. Notifying emergency contact...');
-    _showInAppNotification();
-    _showLocalAlert();
-
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      final userId = user.uid;
-      final userDocRef = _firestore.collection('users').doc(userId);
-
-      userDocRef.get().then((userSnapshot) {
-        if (userSnapshot.exists) {
-          final userName = userSnapshot.data()?['profile']['name'] ?? '';
-          final userEmail = user.email ?? '';
-          final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? [];
-
-          for (var contact in emergencyContacts) {
-            final contactEmail = contact['email'] ?? '';
-            sendEmail(userEmail, contactEmail, userName);
-          }
-
-          if (emergencyContacts.isEmpty) {
-            print('No emergency contacts found for user.');
-          }
-        } else {
-          print('Error: User document not found.');
-        }
-      }).catchError((error) {
-        print('Error fetching user data: $error');
-      });
-    }
-  }
-
-  Future<void> _signOut() async {
-    try {
-      await _auth.signOut();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => SignInScreen()),
-      );
-    } catch (e) {
-      print('Error signing out: $e');
-    }
-  }
-
-  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
+  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> data) {
     return [
       charts.Series<CODataPoint, DateTime>(
         id: 'CO Data',
         colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
-        domainFn: (CODataPoint point, _) => point.time,
-        measureFn: (CODataPoint point, _) => point.coRate,
-        data: dataPoints,
-      )
+        domainFn: (CODataPoint dataPoint, _) => dataPoint.time,
+        measureFn: (CODataPoint dataPoint, _) => dataPoint.coRate,
+        data: data,
+      ),
     ];
+  }
+
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => SignInScreen()),
+    );
   }
 }
 
@@ -402,4 +389,64 @@ class CODataPoint {
   final double coRate;
 
   CODataPoint(this.time, this.coRate);
+}
+
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    // Initialize Firebase
+    await Firebase.initializeApp();
+
+    // Retrieve the latest CO rate from the database
+    final database = FirebaseDatabase.instance;
+    final coRateSnapshot = await database.reference().child('rate/coRate').once();
+    final coRate = double.tryParse(coRateSnapshot.snapshot.value.toString()) ?? 0;
+
+    // Save the CO rate to shared preferences
+    final prefs = await SharedPreferences.getInstance();
+    final coDataPoints = prefs.getStringList('coDataPoints') ?? [];
+    final newPoint = '${DateTime.now()}:$coRate';
+    coDataPoints.add(newPoint);
+    if (coDataPoints.length > 100) {
+      coDataPoints.removeAt(0);
+    }
+    prefs.setStringList('coDataPoints', coDataPoints);
+
+    // Check if the vehicle is in danger
+    if (coRate > 100) {
+      // Trigger a local notification
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+      final AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+      final DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings();
+
+      final InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
+
+      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+        'your channel id',
+        'your channel name',
+        channelDescription: 'your channel description',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: false,
+      );
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+      );
+      await flutterLocalNotificationsPlugin.show(
+        0,
+        'Alert! by CoSense',
+        'Vehicle reached danger level!',
+        platformChannelSpecifics,
+        payload: 'item x',
+      );
+    }
+
+    return Future.value(true);
+  });
 }
