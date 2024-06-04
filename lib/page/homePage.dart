@@ -10,6 +10,7 @@ import 'package:fypcosense/page/signInPage.dart';
 import 'package:fypcosense/page/settingProfile.dart';
 import 'package:fypcosense/page/settingEmergency.dart';
 import 'dart:io' show Platform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 
@@ -28,6 +29,7 @@ class _HomePageState extends State<HomePage> {
   double latitude = 0;
   double longitude = 0;
 
+  final String sendgridApiKey = dotenv.env['SENDGRID_API_KEY'] ?? '';
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -192,7 +194,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String userName) async {
-    final mailer = Mailer('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');
+    final mailer = Mailer('sendgridApiKey');
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final latitude = state.latitude;

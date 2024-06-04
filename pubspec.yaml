@@ -48,6 +48,7 @@ dependencies:
   fl_chart: ^0.45.1
   shared_preferences: ^2.0.12
   workmanager: ^0.5.0
+  flutter_dotenv: ^5.0.2
 
 
 dev_dependencies:
