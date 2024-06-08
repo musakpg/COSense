@@ -1,12 +1,12 @@
-// signInPage.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:icons_plus/icons_plus.dart';
 import 'package:fypcosense/theme/theme.dart';
 import 'package:fypcosense/page/signUpPage.dart';
-import 'package:fypcosense/page/homePage.dart'; // Correct import
-import 'package:fypcosense/page/forget_password.dart'; // Import ForgotPasswordScreen
+import 'package:fypcosense/page/homePage.dart';
+import 'package:fypcosense/page/forget_password.dart';
 import 'package:fypcosense/widgets/custom_scaffold.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -21,6 +21,41 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool rememberPassword = true;
+  final _storage = const FlutterSecureStorage();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserCredentials();
+  }
+
+  Future<void> _loadUserCredentials() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? remember = prefs.getBool('rememberPassword');
+    if (remember != null && remember) {
+      String? email = await _storage.read(key: 'email');
+      String? password = await _storage.read(key: 'password');
+      if (email != null && password != null) {
+        setState(() {
+          _emailController.text = email;
+          _passwordController.text = password;
+          rememberPassword = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveUserCredentials() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('rememberPassword', rememberPassword);
+    if (rememberPassword) {
+      await _storage.write(key: 'email', value: _emailController.text);
+      await _storage.write(key: 'password', value: _passwordController.text);
+    } else {
+      await _storage.delete(key: 'email');
+      await _storage.delete(key: 'password');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,13 +112,13 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                           border: OutlineInputBorder(
                             borderSide: const BorderSide(
-                              color: Colors.black12, // Default border color
+                              color: Colors.black12,
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderSide: const BorderSide(
-                              color: Colors.black12, // Default border color
+                              color: Colors.black12,
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -110,13 +145,13 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                           border: OutlineInputBorder(
                             borderSide: const BorderSide(
-                              color: Colors.black12, // Default border color
+                              color: Colors.black12,
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderSide: const BorderSide(
-                              color: Colors.black12, // Default border color
+                              color: Colors.black12,
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -149,7 +184,6 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                           GestureDetector(
                             onTap: () {
-                              // Navigate to ForgotPasswordScreen when user clicks "Forget password?"
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -171,44 +205,34 @@ class _SignInScreenState extends State<SignInScreen> {
                         height: 25.0,
                       ),
                       GestureDetector(
-                        onTap: () async {
-
-                        },
+                        onTap: () async {},
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () async {
-                              try {
-                                final User? user = (await _auth.signInWithEmailAndPassword(
-                                  email: _emailController.text,
-                                  password: _passwordController.text,
-                                ))
-                                    .user;
-                                if (user != null) {
-                                  // If form is valid and rememberPassword is true, navigate to HomePage
-                                  if (_formSignInKey.currentState!.validate() && rememberPassword) {
+                              if (_formSignInKey.currentState!.validate()) {
+                                try {
+                                  final User? user = (await _auth.signInWithEmailAndPassword(
+                                    email: _emailController.text,
+                                    password: _passwordController.text,
+                                  )).user;
+
+                                  if (user != null) {
+                                    await _saveUserCredentials();
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const HomePage(), // Ensure HomePage() is returned correctly
-                                      ),
-                                    );
-                                  } else if (!rememberPassword) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Please agree to the processing of personal data'),
+                                        builder: (context) => HomePage(),
                                       ),
                                     );
                                   }
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error: ${e.toString()}'),
+                                    ),
+                                  );
                                 }
-                              } catch (e) {
-                                print(e);
-                                // handle error
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error: ${e.toString()}'),
-                                  ),
-                                );
                               }
                             },
                             child: const Text('Log in'),
@@ -232,12 +256,6 @@ class _SignInScreenState extends State<SignInScreen> {
                               vertical: 0,
                               horizontal: 10,
                             ),
-                            child: Text(
-                              'Sign up with',
-                              style: TextStyle(
-                                color: Colors.black45,
-                              ),
-                            ),
                           ),
                           Expanded(
                             child: Divider(
@@ -250,7 +268,6 @@ class _SignInScreenState extends State<SignInScreen> {
                       const SizedBox(
                         height: 25.0,
                       ),
-                      // don't have an account
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

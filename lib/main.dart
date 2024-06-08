@@ -9,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure that Flutter bindings are initialized
   await Firebase.initializeApp(); // Initialize Firebase
-  await dotenv.load(fileName: ".env");
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true); // Initialize WorkManager
   runApp(const MyApp());
 }
