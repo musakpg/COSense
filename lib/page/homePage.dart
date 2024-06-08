@@ -6,17 +6,40 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sendgrid_mailer/sendgrid_mailer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fypcosense/page/signInPage.dart';
-import 'package:fypcosense/page/settingProfile.dart';
-import 'package:fypcosense/page/settingEmergency.dart';
+import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io' show Platform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'signInPage.dart';
+import 'settingProfile.dart';
+import 'settingEmergency.dart';
+import 'adminPage.dart';
 
-const initializationSettingsAndroid = AndroidInitializationSettings('icon');
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  final appDocumentDir = await getApplicationDocumentsDirectory();
+  Hive.init(appDocumentDir.path);
+  Hive.registerAdapter(CODataPointAdapter());
+  await Hive.openBox<CODataPoint>('coDataPoints');
+
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Carbon Monoxide Tracker',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: SignInScreen(),
+    );
+  }
+}
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
-
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -29,15 +52,43 @@ class _HomePageState extends State<HomePage> {
   double latitude = 0;
   double longitude = 0;
 
-  final String sendgridApiKey = dotenv.env['SENDGRID_API_KEY'] ?? '';
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late Box<CODataPoint> coDataBox;
 
   @override
   void initState() {
     super.initState();
     initFirebase();
+    loadLocalData();
+  }
+
+  Future<void> loadLocalData() async {
+    coDataBox = Hive.box<CODataPoint>('coDataPoints');
+    setState(() {
+      coDataPoints = coDataBox.values.toList();
+      if (coDataPoints.isNotEmpty) {
+        coRate = coDataPoints.last.coRate;
+        carState = coRate > 9 ? 'danger' : 'safe';
+      }
+    });
+  }
+
+  void updateDataPoints(List<CODataPoint> newPoints) {
+    setState(() {
+      coDataPoints = newPoints;
+      if (newPoints.isNotEmpty) {
+        coRate = newPoints.last.coRate;
+        carState = coRate > 9 ? 'danger' : 'safe';
+      }
+      for (var point in newPoints) {
+        coDataBox.add(point);
+      }
+    });
+    if (carState == 'danger') {
+      _notifyEmergencyContact();
+    }
   }
 
   double _calculateChangePercentage(double newRate, double oldRate) {
@@ -49,14 +100,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Align(
-          alignment: Alignment.center,
-          child: Text(
-            'Carbon Monoxide',
-            textAlign: TextAlign.center,
-          ),
-        ),
+        title: Text('Carbon Monoxide'),
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
@@ -88,6 +132,17 @@ class _HomePageState extends State<HomePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => EmergencySetupScreen()),
+                            );
+                          },
+                        ),
+                        ListTile(
+                          leading: Icon(Icons.admin_panel_settings),
+                          title: Text('Admin Page'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => AdminPage(onUpdateData: updateDataPoints, initialDataPoints: coDataPoints)),
                             );
                           },
                         ),
@@ -145,13 +200,48 @@ class _HomePageState extends State<HomePage> {
                 _createLineData(coDataPoints),
                 animate: true,
                 dateTimeFactory: const charts.LocalDateTimeFactory(),
+                primaryMeasureAxis: charts.NumericAxisSpec(
+                  renderSpec: charts.GridlineRendererSpec(
+                    labelStyle: charts.TextStyleSpec(
+                      fontSize: 10,
+                      color: charts.MaterialPalette.black,
+                    ),
+                    lineStyle: charts.LineStyleSpec(
+                      thickness: 0,
+                      color: charts.MaterialPalette.transparent,
+                    ),
+                  ),
+                ),
+                domainAxis: charts.DateTimeAxisSpec(
+                  renderSpec: charts.SmallTickRendererSpec(
+                    labelStyle: charts.TextStyleSpec(
+                      fontSize: 10,
+                      color: charts.MaterialPalette.black,
+                    ),
+                    lineStyle: charts.LineStyleSpec(
+                      thickness: 0,
+                      color: charts.MaterialPalette.transparent,
+                    ),
+                  ),
+                ),
+                defaultRenderer: charts.LineRendererConfig(
+                  includeArea: true,
+                  stacked: false,
+                  areaOpacity: 0.2,
+                  strokeWidthPx: 2.0,
+                ),
               )
                   : Center(child: Text('Loading CO Data...')),
             ),
             SizedBox(height: 10),
-            Text(
-              carState == 'danger' ? 'Danger' : 'Safe',
-              style: TextStyle(fontSize: 18, color: carState == 'danger' ? Colors.red : Colors.green),
+            Center(
+              child: Text(
+                carState == 'danger' ? 'Danger' : 'Safe',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: carState == 'danger' ? Colors.red : Colors.green,
+                ),
+              ),
             ),
             if (carState == 'danger') ...[
               SizedBox(height: 20),
@@ -170,22 +260,6 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 18),
               ),
               SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                    textStyle: TextStyle(fontSize: 20),
-                  ),
-                  onPressed: () {
-                    // Implement your emergency call action
-                  },
-                  child: Text(
-                    'Call 999',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
             ],
           ],
         ),
@@ -193,21 +267,38 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String userName) async {
-    final mailer = Mailer('sendgridApiKey');
+  Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String emergencyName, String userName) async {
+    final mailer = Mailer('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');
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final latitude = state.latitude;
     final longitude = state.longitude;
+    final coRateValue = state.coRate.toStringAsFixed(2);
 
-    final subject = 'COSense Alert';
-    final userNameFormatted = Uri.encodeComponent(userName);
+    final subject = 'URGENT: COSense Alert';
     final locationLink = Platform.isAndroid
         ? 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude'
         : 'https://maps.apple.com/?q=$latitude,$longitude';
 
-    final content = Content('text/html', 'Alert!!! $userName\'s vehicle is in danger. '
-        'Location: <a href="$locationLink">Open in Maps</a>');
+    final content = Content('text/html',
+        '''
+        <html>
+        <body>
+            <h2 style="color: red;">URGENT: COSense Alert</h2>
+            <p>Attention to <b>$emergencyName</b>,</p>
+            <p><b style="color: red;">$userName's vehicle is in danger.</b></p>
+            <p><b>Vehicle CO Rate:</b> <span style="color: red;">$coRateValue PPM (danger level)</span></p>
+            <p><b>Current Location of the Car:</b> <a href="$locationLink">Open in Maps</a></p>
+            <p>Latitude: $latitude</p>
+            <p>Longitude: $longitude</p>
+            <br>
+            <p style="color: red;"><b>Please take necessary action immediately to ensure the safety of the vehicle's occupants.</b></p>
+            <br>
+            <p>Thank you,</p>
+            <p><b>COSense Team</b></p>
+        </body>
+        </html>
+        ''');
 
     final personalization = Personalization([toAddress]);
     final email = Email([personalization], fromAddress, subject, content: [content]);
@@ -221,6 +312,7 @@ class _HomePageState extends State<HomePage> {
     print('Emergency contact is: $emergencyEmail');
     print('User contact is: $userEmail');
     print('User name is: $userName');
+    print('CO Rate: $coRateValue PPM');
     print('Latitude: $latitude, Longitude: $longitude');
   }
 
@@ -232,17 +324,17 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         previousCoRate = coRate;
         coRate = newCoRate;
-        coDataPoints.add(CODataPoint(DateTime.now(), coRate));
+        final newPoint = CODataPoint(DateTime.now(), coRate);
+        coDataPoints.add(newPoint);
+        coDataBox.add(newPoint);
         if (coDataPoints.length > 100) {
           coDataPoints.removeAt(0);
         }
-        if (coRate >= 0.05) {
-          carState = 'danger';
-          _notifyEmergencyContact();
-        } else {
-          carState = 'normal';
-        }
+        carState = coRate > 9 ? 'danger' : 'safe';
       });
+      if (carState == 'danger') {
+        _notifyEmergencyContact();
+      }
     });
 
     database.reference().child('gps/latitude').onValue.listen((event) {
@@ -262,7 +354,8 @@ class _HomePageState extends State<HomePage> {
 
   void _showInAppNotification() async {
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    const initializationSettingsAndroid = AndroidInitializationSettings('icon');
+    final initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     const notificationDetails = NotificationDetails(
@@ -299,8 +392,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  _notifyEmergencyContact() {
-    print('CO rate exceeded 0.20 ppm. Notifying emergency contact...');
+  Future<void> _notifyEmergencyContact() async {
+    print('CO rate exceeded 9 ppm. Notifying emergency contact...');
     _showInAppNotification();
     _showLocalAlert();
 
@@ -318,7 +411,8 @@ class _HomePageState extends State<HomePage> {
 
           for (var contact in emergencyContacts) {
             final contactEmail = contact['email'] ?? '';
-            sendEmail(this, userEmail, contactEmail, userName);
+            final contactName = contact['name'] ?? ''; // Extract the emergency contact's name
+            sendEmail(this, userEmail, contactEmail, contactName, userName); // Pass the emergency contact's name
           }
 
           if (emergencyContacts.isEmpty) {
@@ -346,15 +440,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
-    double maxRate = dataPoints.map((e) => e.coRate).reduce((a, b) => a > b ? a : b);
-    double yAxisMax = ((maxRate / 10).ceil()) * 10;
-
     return [
       charts.Series<CODataPoint, DateTime>(
         id: 'CO Data',
         domainFn: (CODataPoint point, _) => point.time,
         measureFn: (CODataPoint point, _) => point.coRate,
         data: dataPoints,
+        colorFn: (_, __) => charts.MaterialPalette.red.shadeDefault,
       )
     ];
   }
@@ -365,4 +457,22 @@ class CODataPoint {
   final double coRate;
 
   CODataPoint(this.time, this.coRate);
+}
+
+class CODataPointAdapter extends TypeAdapter<CODataPoint> {
+  @override
+  final int typeId = 0;
+
+  @override
+  CODataPoint read(BinaryReader reader) {
+    final time = DateTime.fromMillisecondsSinceEpoch(reader.readInt());
+    final coRate = reader.readDouble();
+    return CODataPoint(time, coRate);
+  }
+
+  @override
+  void write(BinaryWriter writer, CODataPoint obj) {
+    writer.writeInt(obj.time.millisecondsSinceEpoch);
+    writer.writeDouble(obj.coRate);
+  }
 }
