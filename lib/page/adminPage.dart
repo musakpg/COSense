@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
-import 'package:hive/hive.dart';
 import 'homePage.dart';
 
 class AdminPage extends StatefulWidget {
@@ -18,34 +17,31 @@ class _AdminPageState extends State<AdminPage> {
   List<CODataPoint> adminDataPoints = [];
   final _formKey = GlobalKey<FormState>();
   String? _errorMsg;
-  late Box<CODataPoint> coDataBox;
 
   @override
   void initState() {
     super.initState();
     adminDataPoints = widget.initialDataPoints;
-    loadLocalData();
-  }
 
-  Future<void> loadLocalData() async {
-    coDataBox = Hive.box<CODataPoint>('coDataPoints');
-    setState(() {
-      adminDataPoints = coDataBox.values.toList();
+    _ppmController.addListener(() {
+      setState(() {}); // Update the UI based on the controller's text changes
     });
   }
 
   void addDataPoint() {
     if (_formKey.currentState!.validate()) {
       final ppm = double.tryParse(_ppmController.text) ?? 0;
+      final newPoint = CODataPoint(DateTime.now(), ppm);
+
       setState(() {
-        final newPoint = CODataPoint(DateTime.now(), ppm);
         adminDataPoints.add(newPoint);
-        coDataBox.add(newPoint);
         if (adminDataPoints.length > 100) {
           adminDataPoints.removeAt(0);
         }
       });
+
       widget.onUpdateData(adminDataPoints);
+
       _ppmController.clear();
       setState(() {
         _errorMsg = null;
@@ -79,7 +75,9 @@ class _AdminPageState extends State<AdminPage> {
                   labelText: 'CO PPM',
                   border: OutlineInputBorder(),
                   errorText: _errorMsg,
-                  suffixIcon: IconButton(
+                  suffixIcon: _ppmController.text.isEmpty
+                      ? null
+                      : IconButton(
                     icon: Icon(Icons.clear),
                     onPressed: () {
                       _ppmController.clear();
@@ -156,7 +154,7 @@ class _AdminPageState extends State<AdminPage> {
         measureFn: (CODataPoint point, _) => point.coRate,
         data: dataPoints,
         colorFn: (_, __) => charts.MaterialPalette.red.shadeDefault,
-      )
+      ),
     ];
   }
 }

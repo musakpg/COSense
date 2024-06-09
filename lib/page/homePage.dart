@@ -6,40 +6,17 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sendgrid_mailer/sendgrid_mailer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:hive/hive.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io' show Platform;
 import 'signInPage.dart';
 import 'settingProfile.dart';
 import 'settingEmergency.dart';
 import 'adminPage.dart';
+import 'dart:io' show Platform;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-
-  final appDocumentDir = await getApplicationDocumentsDirectory();
-  Hive.init(appDocumentDir.path);
-  Hive.registerAdapter(CODataPointAdapter());
-  await Hive.openBox<CODataPoint>('coDataPoints');
-
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Carbon Monoxide Tracker',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: SignInScreen(),
-    );
-  }
-}
+const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 
 class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -47,7 +24,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   double coRate = 0;
   double previousCoRate = 0;
-  String carState = '';
+  String carState = 'safe';
   List<CODataPoint> coDataPoints = [];
   double latitude = 0;
   double longitude = 0;
@@ -55,39 +32,36 @@ class _HomePageState extends State<HomePage> {
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late Box<CODataPoint> coDataBox;
 
   @override
   void initState() {
     super.initState();
     initFirebase();
-    loadLocalData();
-  }
-
-  Future<void> loadLocalData() async {
-    coDataBox = Hive.box<CODataPoint>('coDataPoints');
-    setState(() {
-      coDataPoints = coDataBox.values.toList();
-      if (coDataPoints.isNotEmpty) {
-        coRate = coDataPoints.last.coRate;
-        carState = coRate > 9 ? 'danger' : 'safe';
-      }
-    });
   }
 
   void updateDataPoints(List<CODataPoint> newPoints) {
     setState(() {
-      coDataPoints = newPoints;
       if (newPoints.isNotEmpty) {
+        previousCoRate = coRate;
         coRate = newPoints.last.coRate;
-        carState = coRate > 9 ? 'danger' : 'safe';
-      }
-      for (var point in newPoints) {
-        coDataBox.add(point);
+        carState = _determineCarState(coRate);
+        coDataPoints = newPoints;
       }
     });
     if (carState == 'danger') {
       _notifyEmergencyContact();
+    }
+  }
+
+  String _determineCarState(double coRate) {
+    if (coRate < 0.3) {
+      return 'safe';
+    } else if (coRate < 1.2) {
+      return 'caution';
+    } else if (coRate < 1.7) {
+      return 'warning';
+    } else {
+      return 'danger';
     }
   }
 
@@ -100,7 +74,14 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Carbon Monoxide'),
+        automaticallyImplyLeading: false,
+        title: Align(
+          alignment: Alignment.center,
+          child: Text(
+            'Carbon Monoxide',
+            textAlign: TextAlign.center,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
@@ -236,14 +217,14 @@ class _HomePageState extends State<HomePage> {
             SizedBox(height: 10),
             Center(
               child: Text(
-                carState == 'danger' ? 'Danger' : 'Safe',
+                carState == 'danger' ? 'Danger' : carState == 'warning' ? 'Warning' : carState == 'caution' ? 'Caution' : 'Safe',
                 style: TextStyle(
                   fontSize: 18,
-                  color: carState == 'danger' ? Colors.red : Colors.green,
+                  color: carState == 'danger' ? Colors.red : carState == 'warning' ? Colors.orange : carState == 'caution' ? Colors.yellow : Colors.green,
                 ),
               ),
             ),
-            if (carState == 'danger') ...[
+            if (carState == 'danger' || carState == 'warning') ...[
               SizedBox(height: 20),
               Text(
                 'Actions',
@@ -268,7 +249,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String emergencyName, String userName) async {
-    final mailer = Mailer('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');
+    final mailer = Mailer('');
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final latitude = state.latitude;
@@ -324,13 +305,11 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         previousCoRate = coRate;
         coRate = newCoRate;
-        final newPoint = CODataPoint(DateTime.now(), coRate);
-        coDataPoints.add(newPoint);
-        coDataBox.add(newPoint);
+        carState = _determineCarState(coRate);
+        coDataPoints.add(CODataPoint(DateTime.now(), coRate));
         if (coDataPoints.length > 100) {
           coDataPoints.removeAt(0);
         }
-        carState = coRate > 9 ? 'danger' : 'safe';
       });
       if (carState == 'danger') {
         _notifyEmergencyContact();
@@ -354,8 +333,7 @@ class _HomePageState extends State<HomePage> {
 
   void _showInAppNotification() async {
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const initializationSettingsAndroid = AndroidInitializationSettings('icon');
-    final initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     const notificationDetails = NotificationDetails(
@@ -393,7 +371,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _notifyEmergencyContact() async {
-    print('CO rate exceeded 9 ppm. Notifying emergency contact...');
+    print('CO rate exceeded 1.7 ppm. Notifying emergency contact...');
     _showInAppNotification();
     _showLocalAlert();
 
@@ -457,22 +435,4 @@ class CODataPoint {
   final double coRate;
 
   CODataPoint(this.time, this.coRate);
-}
-
-class CODataPointAdapter extends TypeAdapter<CODataPoint> {
-  @override
-  final int typeId = 0;
-
-  @override
-  CODataPoint read(BinaryReader reader) {
-    final time = DateTime.fromMillisecondsSinceEpoch(reader.readInt());
-    final coRate = reader.readDouble();
-    return CODataPoint(time, coRate);
-  }
-
-  @override
-  void write(BinaryWriter writer, CODataPoint obj) {
-    writer.writeInt(obj.time.millisecondsSinceEpoch);
-    writer.writeDouble(obj.coRate);
-  }
 }
