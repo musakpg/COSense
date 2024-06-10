@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sendgrid_mailer/sendgrid_mailer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -261,7 +262,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String emergencyName, String userName) async {
-    final mailer = Mailer('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');
+    final String apiKey = dotenv.env['SENDGRID_API_KEY']!;
+    final mailer = Mailer(apiKey);
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final latitude = state.latitude;
@@ -309,203 +311,122 @@ class _HomePageState extends State<HomePage> {
     print('Latitude: $latitude, Longitude: $longitude');
   }
 
+  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
+    return [
+      charts.Series<CODataPoint, DateTime>(
+        id: 'COData',
+        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
+        domainFn: (CODataPoint point, _) => point.time,
+        measureFn: (CODataPoint point, _) => point.coRate,
+        data: dataPoints,
+      ),
+    ];
+  }
+
   Future<void> initFirebase() async {
     await Firebase.initializeApp();
-    database = FirebaseDatabase.instance;
-    database.reference().child('rate/coRate').onValue.listen((event) {
-      final newCoRate = double.tryParse(event.snapshot.value.toString()) ?? 0;
-      setState(() {
-        previousCoRate = coRate;
-        coRate = newCoRate;
-        carState = _determineCarState(coRate);
-        coDataPoints.add(CODataPoint(DateTime.now(), coRate));
-        if (coDataPoints.length > 100) {
-          coDataPoints.removeAt(0);
-        }
+    final database = FirebaseDatabase.instance;
+    final coDataRef = database.reference().child('coData');
+    coDataRef.onValue.listen((event) {
+      final dataSnapshot = event.snapshot.value as Map<dynamic, dynamic>;
+      final newPoints = <CODataPoint>[];
+      dataSnapshot.forEach((key, value) {
+        final time = DateTime.parse(key);
+        final coRate = double.parse(value['coRate'].toString());
+        newPoints.add(CODataPoint(time: time, coRate: coRate));
       });
-      if (carState == 'danger') {
-        _notifyEmergencyContact();
-      } else if (carState == 'warning') {
-        _showWarningAlert();
-      } else if (carState == 'caution') {
-        _showCautionNotification();
-      }
-    });
-
-    database.reference().child('gps/latitude').onValue.listen((event) {
-      final newLatitude = double.tryParse(event.snapshot.value.toString()) ?? 0;
-      setState(() {
-        latitude = newLatitude;
-      });
-    });
-
-    database.reference().child('gps/longitude').onValue.listen((event) {
-      final newLongitude = double.tryParse(event.snapshot.value.toString()) ?? 0;
-      setState(() {
-        longitude = newLongitude;
-      });
+      updateDataPoints(newPoints);
     });
   }
 
-  void _initializeNotifications() async {
-    const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  }
+  Future<void> _initializeNotifications() async {
+    const androidSettings = AndroidInitializationSettings('icon');
+    final initSettings = InitializationSettings(android: androidSettings);
 
-  void _showInAppNotification() async {
-    const notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'high_co_channel',
-        'CO Level Alert',
-        channelDescription: 'High CO level detected in your car.',
-        importance: Importance.max,
-        priority: Priority.high,
-        ticker: 'CO Alert',
-      ),
-    );
-
-    await flutterLocalNotificationsPlugin.show(0, 'High CO Level Detected', 'Please take necessary action.', notificationDetails);
-  }
-
-  void _showLocalAlert() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Emergency Alert'),
-          content: Text('High CO levels detected. Please take necessary action.'),
-          actions: [
-            TextButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
+    await flutterLocalNotificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        // Handle notification tapped logic here
       },
     );
   }
 
-  void _showWarningAlert() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Warning'),
-          content: Text('Warning: Elevated CO levels detected. Please take caution.'),
-          actions: [
-            TextButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
+
+  Future<void> _showWarningAlert() async {
+    const androidDetails = AndroidNotificationDetails(
+      'channel_id',
+      'CO Warning',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: 'icon',
+      styleInformation: BigTextStyleInformation('Dangerous level of CO detected. Please ventilate your car immediately!'),
+    );
+    const platformDetails = NotificationDetails(android: androidDetails);
+
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'Warning',
+      'CO levels are at a warning threshold!',
+      platformDetails,
+      payload: 'CO warning notification',
     );
   }
 
-  void _showCautionNotification() async {
-    print('Caution state reached. Showing caution notification.');
-    const notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'caution_co_channel',
-        'CO Level Caution',
-        channelDescription: 'Elevated CO level detected in your car.',
-        importance: Importance.low,
-        priority: Priority.low,
-        ticker: 'CO Caution',
-      ),
+  Future<void> _showCautionNotification() async {
+    const androidDetails = AndroidNotificationDetails(
+      'channel_id',
+      'CO Caution',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      icon: 'icon',
+      styleInformation: BigTextStyleInformation('CO levels are rising. Monitor your environment closely.'),
     );
+    const platformDetails = NotificationDetails(android: androidDetails);
 
-    await flutterLocalNotificationsPlugin.show(1, 'Elevated CO Level Detected', 'Please be cautious.', notificationDetails);
-  }
-
-  Future<void> _notifyEmergencyContact() async {
-    print('CO rate exceeded 1.7 ppm. Notifying emergency contact...');
-    _showInAppNotification();
-    _showLocalAlert();
-
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      final userId = user.uid;
-      final userDocRef = _firestore.collection('users').doc(userId);
-
-      userDocRef.get().then((userSnapshot) {
-        if (userSnapshot.exists) {
-          final userName = userSnapshot.data()?['profile']['name'] ?? '';
-          final userEmail = user.email ?? '';
-          final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? [];
-
-          for (var contact in emergencyContacts) {
-            final contactEmail = contact['email'] ?? '';
-            final contactName = contact['name'] ?? ''; // Extract the emergency contact's name
-            sendEmail(this, userEmail, contactEmail, contactName, userName); // Pass the emergency contact's name
-          }
-
-          if (emergencyContacts.isEmpty) {
-            print('No emergency contacts found for user.');
-          }
-        } else {
-          print('Error: User document not found.');
-        }
-      }).catchError((error) {
-        print('Error fetching user data: $error');
-      });
-    }
-  }
-
-  Future<void> _signOut() async {
-    try {
-      await _auth.signOut();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => SignInScreen()),
-      );
-    } catch (e) {
-      print('Error signing out: $e');
-    }
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'Caution',
+      'CO levels are rising, please take note.',
+      platformDetails,
+      payload: 'CO caution notification',
+    );
   }
 
   void _showThresholdsDialog(BuildContext context) {
-    showGeneralDialog(
+    showDialog(
       context: context,
-      barrierDismissible: false,
-      barrierLabel: 'Barrier',
-      barrierColor: Colors.black.withOpacity(0.5),
-      transitionDuration: Duration(milliseconds: 200),
-      pageBuilder: (_, __, ___) {
-        return WillPopScope(
-          onWillPop: () async => false, // Disable back button
-          child: Center(
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'CO Level Thresholds',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Safe: CO rate < 0.3 PPM\n'
-                          'Caution: 0.3 <= CO rate < 1.2 PPM\n'
-                          'Warning: 1.2 <= CO rate < 1.7 PPM\n'
-                          'Danger: CO rate >= 1.7 PPM',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  ],
-                ),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Thresholds'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('Safe'),
+                trailing: Text('0 - 0.29 PPM'),
               ),
-            ),
+              ListTile(
+                title: Text('Caution'),
+                trailing: Text('0.30 - 1.19 PPM'),
+              ),
+              ListTile(
+                title: Text('Warning'),
+                trailing: Text('1.20 - 1.69 PPM'),
+              ),
+              ListTile(
+                title: Text('Danger'),
+                trailing: Text('1.70+ PPM'),
+              ),
+            ],
           ),
+          actions: [
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         );
       },
     );
@@ -515,16 +436,24 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context, rootNavigator: true).pop();
   }
 
-  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
-    return [
-      charts.Series<CODataPoint, DateTime>(
-        id: 'CO Data',
-        domainFn: (CODataPoint point, _) => point.time,
-        measureFn: (CODataPoint point, _) => point.coRate,
-        data: dataPoints,
-        colorFn: (_, __) => charts.MaterialPalette.red.shadeDefault,
-      )
-    ];
+  Future<void> _notifyEmergencyContact() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final userData = await _firestore.collection('users').doc(user.uid).get();
+      final emergencyEmail = userData.get('emergencyEmail') as String;
+      final emergencyName = userData.get('emergencyName') as String;
+      final userName = userData.get('name') as String;
+      await sendEmail(this, user.email!, emergencyEmail, emergencyName, userName);
+    }
+  }
+
+  void _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => SignInScreen()),
+          (Route<dynamic> route) => false,
+    );
   }
 }
 
@@ -532,5 +461,5 @@ class CODataPoint {
   final DateTime time;
   final double coRate;
 
-  CODataPoint(this.time, this.coRate);
+  CODataPoint({required this.time, required this.coRate});
 }
