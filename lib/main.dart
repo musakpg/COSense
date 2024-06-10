@@ -4,10 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:fypcosense/page/welcome_screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
-  await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized(); // Ensure that Flutter bindings are initialized
   await Firebase.initializeApp(); // Initialize Firebase
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true); // Initialize WorkManager
