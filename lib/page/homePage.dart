@@ -261,7 +261,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String emergencyName, String userName) async {
-    final mailer = Mailer('');
+    final mailer = Mailer('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');
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final latitude = state.latitude;
