@@ -33,10 +33,14 @@ class _HomePageState extends State<HomePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
   @override
   void initState() {
     super.initState();
+    coRate = 0; // Initialize CO rate to 0 PPM
     initFirebase();
+    _initializeNotifications();
   }
 
   void updateDataPoints(List<CODataPoint> newPoints) {
@@ -50,6 +54,10 @@ class _HomePageState extends State<HomePage> {
     });
     if (carState == 'danger') {
       _notifyEmergencyContact();
+    } else if (carState == 'warning') {
+      _showWarningAlert();
+    } else if (carState == 'caution') {
+      _showCautionNotification();
     }
   }
 
@@ -215,12 +223,16 @@ class _HomePageState extends State<HomePage> {
                   : Center(child: Text('Loading CO Data...')),
             ),
             SizedBox(height: 10),
-            Center(
-              child: Text(
-                carState == 'danger' ? 'Danger' : carState == 'warning' ? 'Warning' : carState == 'caution' ? 'Caution' : 'Safe',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: carState == 'danger' ? Colors.red : carState == 'warning' ? Colors.orange : carState == 'caution' ? Colors.yellow : Colors.green,
+            GestureDetector(
+              onLongPressStart: (_) => _showThresholdsDialog(context),
+              onLongPressEnd: (_) => _hideThresholdsDialog(),
+              child: Center(
+                child: Text(
+                  carState == 'danger' ? 'Danger' : carState == 'warning' ? 'Warning' : carState == 'caution' ? 'Caution' : 'Safe',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: carState == 'danger' ? Colors.red : carState == 'warning' ? Colors.orange : carState == 'caution' ? Colors.yellow : Colors.green,
+                  ),
                 ),
               ),
             ),
@@ -270,8 +282,8 @@ class _HomePageState extends State<HomePage> {
             <p><b style="color: red;">$userName's vehicle is in danger.</b></p>
             <p><b>Vehicle CO Rate:</b> <span style="color: red;">$coRateValue PPM (danger level)</span></p>
             <p><b>Current Location of the Car:</b> <a href="$locationLink">Open in Maps</a></p>
-            <p>Latitude: $latitude</p>
-            <p>Longitude: $longitude</p>
+            <p><b>Latitude:</b> $latitude</p>
+            <p><b>Longitude:</b> $longitude</p>
             <br>
             <p style="color: red;"><b>Please take necessary action immediately to ensure the safety of the vehicle's occupants.</b></p>
             <br>
@@ -313,6 +325,10 @@ class _HomePageState extends State<HomePage> {
       });
       if (carState == 'danger') {
         _notifyEmergencyContact();
+      } else if (carState == 'warning') {
+        _showWarningAlert();
+      } else if (carState == 'caution') {
+        _showCautionNotification();
       }
     });
 
@@ -331,11 +347,12 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _showInAppNotification() async {
-    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  void _initializeNotifications() async {
     const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
 
+  void _showInAppNotification() async {
     const notificationDetails = NotificationDetails(
       android: AndroidNotificationDetails(
         'high_co_channel',
@@ -368,6 +385,42 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  void _showWarningAlert() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Warning'),
+          content: Text('Warning: Elevated CO levels detected. Please take caution.'),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCautionNotification() async {
+    print('Caution state reached. Showing caution notification.');
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'caution_co_channel',
+        'CO Level Caution',
+        channelDescription: 'Elevated CO level detected in your car.',
+        importance: Importance.low,
+        priority: Priority.low,
+        ticker: 'CO Caution',
+      ),
+    );
+
+    await flutterLocalNotificationsPlugin.show(1, 'Elevated CO Level Detected', 'Please be cautious.', notificationDetails);
   }
 
   Future<void> _notifyEmergencyContact() async {
@@ -415,6 +468,51 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       print('Error signing out: $e');
     }
+  }
+
+  void _showThresholdsDialog(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'Barrier',
+      barrierColor: Colors.black.withOpacity(0.5),
+      transitionDuration: Duration(milliseconds: 200),
+      pageBuilder: (_, __, ___) {
+        return WillPopScope(
+          onWillPop: () async => false, // Disable back button
+          child: Center(
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'CO Level Thresholds',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Safe: CO rate < 0.3 PPM\n'
+                          'Caution: 0.3 <= CO rate < 1.2 PPM\n'
+                          'Warning: 1.2 <= CO rate < 1.7 PPM\n'
+                          'Danger: CO rate >= 1.7 PPM',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideThresholdsDialog() {
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
