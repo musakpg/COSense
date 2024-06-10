@@ -161,7 +161,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Text(
               'Current level',
-              style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
             SizedBox(height: 10),
             Column(
@@ -174,12 +174,12 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(height: 5),
                 Text(
                   '${coRate.toStringAsFixed(2)} PPM',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
                 ),
                 SizedBox(height: 5),
                 Text(
                   'Now ${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}%',
-                  style: TextStyle(fontSize: 18, color: Colors.green),
+                  style: TextStyle(fontSize: 18, color: Colors.blue),
                 ),
               ],
             ),
@@ -263,27 +263,66 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
-              Text(
-                '• Reduce your exposure to CO',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 5),
-              Text(
-                '• Turn off the car and get out',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 5),
-              Text(
-                '• Call 911',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 5),
-              Text(
-                '• Stay calm and don\'t panic',
-                style: TextStyle(fontSize: 18),
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                elevation: 5,
+                child: Column(
+                  children: [
+                    ListTile(
+                      tileColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+                      ),
+                      leading: Icon(Icons.medical_services, color: Colors.white),
+                      title: Text(
+                        'Reduce your exposure to CO',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ),
+                    Divider(height: 10, thickness: 1), // Add divider for separation
+                    ListTile(
+                      tileColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                      ),
+                      leading: Icon(Icons.power_off, color: Colors.white),
+                      title: Text(
+                        'Turn off the car and get out',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ),
+                    Divider(height: 10, thickness: 1), // Add divider for separation
+                    ListTile(
+                      tileColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                      ),
+                      leading: Icon(Icons.phone, color: Colors.white),
+                      title: Text(
+                        'Call 911',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ),
+                    Divider(height: 10, thickness: 1), // Add divider for separation
+                    ListTile(
+                      tileColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                      ),
+                      leading: Icon(Icons.sentiment_satisfied_alt, color: Colors.white),
+                      title: Text(
+                        'Stay calm and don\'t panic',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 20),
             ],
+
           ],
         ),
       ),
