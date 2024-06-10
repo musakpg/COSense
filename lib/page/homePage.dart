@@ -29,6 +29,8 @@ class _HomePageState extends State<HomePage> {
   double latitude = 0;
   double longitude = 0;
 
+  CODataPoint? selectedDataPoint;
+
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -219,10 +221,27 @@ class _HomePageState extends State<HomePage> {
                   areaOpacity: 0.2,
                   strokeWidthPx: 2.0,
                 ),
+                selectionModels: [
+                  charts.SelectionModelConfig(
+                    type: charts.SelectionModelType.info,
+                    changedListener: _onSelectionChanged,
+                  ),
+                ],
               )
                   : Center(child: Text('Loading CO Data...')),
             ),
             SizedBox(height: 10),
+            if (selectedDataPoint != null) ...[
+              Text(
+                'Selected CO Rate: ${selectedDataPoint!.coRate} PPM',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Selected Car State: ${_determineCarState(selectedDataPoint!.coRate)}',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+            ],
             GestureDetector(
               onLongPressStart: (_) => _showThresholdsDialog(context),
               onLongPressEnd: (_) => _hideThresholdsDialog(),
@@ -231,6 +250,7 @@ class _HomePageState extends State<HomePage> {
                   carState == 'danger' ? 'Danger' : carState == 'warning' ? 'Warning' : carState == 'caution' ? 'Caution' : 'Safe',
                   style: TextStyle(
                     fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: carState == 'danger' ? Colors.red : carState == 'warning' ? Colors.orange : carState == 'caution' ? Colors.yellow : Colors.green,
                   ),
                 ),
@@ -250,6 +270,16 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 5),
               Text(
                 '• Turn off the car and get out',
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 5),
+              Text(
+                '• Call 911',
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 5),
+              Text(
+                '• Stay calm and don\'t panic',
                 style: TextStyle(fontSize: 18),
               ),
               SizedBox(height: 20),
@@ -518,6 +548,20 @@ class _HomePageState extends State<HomePage> {
 
   void _hideThresholdsDialog() {
     Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  void _onSelectionChanged(charts.SelectionModel model) {
+    final selectedDatum = model.selectedDatum;
+    if (selectedDatum.isNotEmpty) {
+      final CODataPoint dataPoint = selectedDatum.first.datum;
+      setState(() {
+        selectedDataPoint = dataPoint;
+      });
+    } else {
+      setState(() {
+        selectedDataPoint = null;
+      });
+    }
   }
 
   List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
