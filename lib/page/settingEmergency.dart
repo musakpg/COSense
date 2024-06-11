@@ -83,49 +83,58 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
   }
 
   Widget _buildContactContainer(int index) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10.0),
-        color: Colors.grey[200],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Contact ${index + 1}'),
-          const SizedBox(height: 10.0),
-          TextFormField(
-            controller: _emergencyNameControllers[index],
-            decoration: InputDecoration(
-              labelText: 'Name',
-              border: OutlineInputBorder(),
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0), // Increase the vertical padding for more spacing
+      child: Material(
+        elevation: 5.0, // Adjust the elevation as needed
+        shadowColor: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(10.0), // Ensure the border radius matches
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10.0),
+            color: Colors.white, // Ensure the background color is white or desired color
           ),
-          const SizedBox(height: 10.0),
-          TextFormField(
-            controller: _emergencyEmailControllers[index],
-            decoration: InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 10.0),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                icon: Icon(Icons.delete),
-                onPressed: () {
-                  _deleteContact(index);
-                },
+              Text('Contact ${index + 1}'),
+              const SizedBox(height: 10.0),
+              TextFormField(
+                controller: _emergencyNameControllers[index],
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              TextFormField(
+                controller: _emergencyEmailControllers[index],
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () {
+                      _deleteContact(index);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
+
+
 
   Widget _buildAddContactButton() {
     return ElevatedButton(
@@ -183,7 +192,6 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
         );
       });
     } catch (e) {
-      // Handle any errors
       print('Error saving emergency contacts: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

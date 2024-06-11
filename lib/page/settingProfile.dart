@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fypcosense/page/setup_emergency.dart';
 
 class SettingProfile extends StatefulWidget {
   const SettingProfile({Key? key}) : super(key: key);
@@ -32,29 +31,48 @@ class _SettingProfileState extends State<SettingProfile> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: ListView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
+            Material(
+              elevation: 5.0,
+              shadowColor: Colors.black.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10.0),
+              child: Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.0),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10.0),
+                    TextFormField(
+                      controller: _phoneNumberController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 10.0),
-            TextFormField(
-              controller: _phoneNumberController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 10.0),
             ElevatedButton(
               onPressed: () {
                 saveProfileData();
               },
               child: const Text('Save'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 100, vertical: 15), // Adjust the padding as needed
+              ),
             ),
           ],
         ),
@@ -88,7 +106,7 @@ class _SettingProfileState extends State<SettingProfile> {
       final userId = FirebaseAuth.instance.currentUser!.uid;
       final userDocRef = _firestore.collection('users').doc(userId);
 
-      final profileData ={
+      final profileData = {
         'name': _nameController.text,
         'phoneNumber': _phoneNumberController.text,
       };

@@ -90,6 +90,7 @@ class _HomePageState extends State<HomePage> {
           child: Text(
             'Carbon Monoxide',
             textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         actions: [
@@ -200,7 +201,7 @@ class _HomePageState extends State<HomePage> {
               shadowColor: Colors.black.withOpacity(0.5),
               borderRadius: BorderRadius.circular(15.0), // To match the Container's shape if needed
               child: Container(
-                height: 450, // Adjusted height to accommodate additional widgets
+                height: 300, // Adjusted height to accommodate additional widgets
                 decoration: BoxDecoration(
                   color: Colors.white, // Ensure the background color is white or desired color
                   borderRadius: BorderRadius.circular(15.0), // Ensure the border radius matches
