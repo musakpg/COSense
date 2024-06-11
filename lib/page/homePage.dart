@@ -164,95 +164,151 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
             SizedBox(height: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'CO',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Material(
+                elevation: 5.0,  // Adjust the elevation value as needed
+                shadowColor: Colors.grey,  // You can also customize the shadow color
+                borderRadius: BorderRadius.circular(15.0),
+              child:ListTile(
+                tileColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
                 ),
-                SizedBox(height: 5),
-                Text(
-                  '${coRate.toStringAsFixed(2)} PPM',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CO',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      '${coRate.toStringAsFixed(2)} PPM',
+                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'Now ${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}%',
+                      style: TextStyle(fontSize: 18, color: Colors.blue),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 5),
-                Text(
-                  'Now ${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}%',
-                  style: TextStyle(fontSize: 18, color: Colors.blue),
+              ),
+            ),
+            SizedBox(height: 30),
+            Material(
+              elevation: 5.0, // Adjust the elevation as needed
+              shadowColor: Colors.black.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(15.0), // To match the Container's shape if needed
+              child: Container(
+                height: 450, // Adjusted height to accommodate additional widgets
+                decoration: BoxDecoration(
+                  color: Colors.white, // Ensure the background color is white or desired color
+                  borderRadius: BorderRadius.circular(15.0), // Ensure the border radius matches
                 ),
-              ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: coDataPoints.isNotEmpty
+                          ? charts.TimeSeriesChart(
+                        _createLineData(coDataPoints),
+                        animate: true,
+                        dateTimeFactory: const charts.LocalDateTimeFactory(),
+                        primaryMeasureAxis: charts.NumericAxisSpec(
+                          renderSpec: charts.GridlineRendererSpec(
+                            labelStyle: charts.TextStyleSpec(
+                              fontSize: 10,
+                              color: charts.MaterialPalette.black,
+                            ),
+                            lineStyle: charts.LineStyleSpec(
+                              thickness: 0,
+                              color: charts.MaterialPalette.transparent,
+                            ),
+                          ),
+                        ),
+                        domainAxis: charts.DateTimeAxisSpec(
+                          renderSpec: charts.SmallTickRendererSpec(
+                            labelStyle: charts.TextStyleSpec(
+                              fontSize: 10,
+                              color: charts.MaterialPalette.black,
+                            ),
+                            lineStyle: charts.LineStyleSpec(
+                              thickness: 0,
+                              color: charts.MaterialPalette.transparent,
+                            ),
+                          ),
+                        ),
+                        defaultRenderer: charts.LineRendererConfig(
+                          includeArea: true,
+                          stacked: false,
+                          areaOpacity: 0.2,
+                          strokeWidthPx: 2.0,
+                        ),
+                        selectionModels: [
+                          charts.SelectionModelConfig(
+                            type: charts.SelectionModelType.info,
+                            changedListener: _onSelectionChanged,
+                          ),
+                        ],
+                      )
+                          : Center(child: Text('Loading CO Data...')),
+                    ),
+                    SizedBox(height: 10),
+                    GestureDetector(
+                      onLongPressStart: (_) => _showThresholdsDialog(context),
+                      onLongPressEnd: (_) => _hideThresholdsDialog(),
+                      child: Center(
+                        child: Text(
+                          carState == 'danger'
+                              ? 'Danger'
+                              : carState == 'warning'
+                              ? 'Warning'
+                              : carState == 'caution'
+                              ? 'Caution'
+                              : 'Safe',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: carState == 'danger'
+                                ? Colors.red
+                                : carState == 'warning'
+                                ? Colors.orange
+                                : carState == 'caution'
+                                ? Colors.yellow
+                                : Colors.green,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                  ],
+                ),
+              ),
             ),
             SizedBox(height: 10),
-            Container(
-              height: 200,
-              child: coDataPoints.isNotEmpty
-                  ? charts.TimeSeriesChart(
-                _createLineData(coDataPoints),
-                animate: true,
-                dateTimeFactory: const charts.LocalDateTimeFactory(),
-                primaryMeasureAxis: charts.NumericAxisSpec(
-                  renderSpec: charts.GridlineRendererSpec(
-                    labelStyle: charts.TextStyleSpec(
-                      fontSize: 10,
-                      color: charts.MaterialPalette.black,
-                    ),
-                    lineStyle: charts.LineStyleSpec(
-                      thickness: 0,
-                      color: charts.MaterialPalette.transparent,
-                    ),
-                  ),
+            Material(
+              elevation: 5.0, // Adjust the elevation as needed
+              shadowColor: Colors.black.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(15.0),
+              child:ListTile(
+                tileColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
                 ),
-                domainAxis: charts.DateTimeAxisSpec(
-                  renderSpec: charts.SmallTickRendererSpec(
-                    labelStyle: charts.TextStyleSpec(
-                      fontSize: 10,
-                      color: charts.MaterialPalette.black,
-                    ),
-                    lineStyle: charts.LineStyleSpec(
-                      thickness: 0,
-                      color: charts.MaterialPalette.transparent,
-                    ),
-                  ),
-                ),
-                defaultRenderer: charts.LineRendererConfig(
-                  includeArea: true,
-                  stacked: false,
-                  areaOpacity: 0.2,
-                  strokeWidthPx: 2.0,
-                ),
-                selectionModels: [
-                  charts.SelectionModelConfig(
-                    type: charts.SelectionModelType.info,
-                    changedListener: _onSelectionChanged,
-                  ),
-                ],
-              )
-                  : Center(child: Text('Loading CO Data...')),
-            ),
-            SizedBox(height: 10),
-            if (selectedDataPoint != null) ...[
-              Text(
-                'Selected CO Rate: ${selectedDataPoint!.coRate} PPM',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'Selected Car State: ${_determineCarState(selectedDataPoint!.coRate)}',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-            ],
-            GestureDetector(
-              onLongPressStart: (_) => _showThresholdsDialog(context),
-              onLongPressEnd: (_) => _hideThresholdsDialog(),
-              child: Center(
-                child: Text(
-                  carState == 'danger' ? 'Danger' : carState == 'warning' ? 'Warning' : carState == 'caution' ? 'Caution' : 'Safe',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: carState == 'danger' ? Colors.red : carState == 'warning' ? Colors.orange : carState == 'caution' ? Colors.yellow : Colors.green,
-                  ),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (selectedDataPoint != null) ...[
+                      Text(
+                        'Selected CO Rate: ${selectedDataPoint!.coRate} PPM',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Selected Car State: ${_determineCarState(selectedDataPoint!.coRate)}',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -263,66 +319,70 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                elevation: 5,
-                child: Column(
-                  children: [
-                    ListTile(
-                      tileColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+              Material(
+                elevation: 5.0,  // Adjust the elevation value as needed
+                shadowColor: Colors.grey,  // You can also customize the shadow color
+                borderRadius: BorderRadius.circular(15.0),
+                child: Card(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                  ),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        tileColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+                        ),
+                        leading: Icon(Icons.medical_services, color: Colors.white),
+                        title: Text(
+                          'Reduce your exposure to CO',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                       ),
-                      leading: Icon(Icons.medical_services, color: Colors.white),
-                      title: Text(
-                        'Reduce your exposure to CO',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      Divider(height: 10, thickness: 1, color: Colors.white), // Add divider for separation
+                      ListTile(
+                        tileColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                        ),
+                        leading: Icon(Icons.power_off, color: Colors.white),
+                        title: Text(
+                          'Turn off the car and get out',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                       ),
-                    ),
-                    Divider(height: 10, thickness: 1), // Add divider for separation
-                    ListTile(
-                      tileColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                      Divider(height: 10, thickness: 1, color: Colors.white), // Add divider for separation
+                      ListTile(
+                        tileColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                        ),
+                        leading: Icon(Icons.phone, color: Colors.white),
+                        title: Text(
+                          'Call 911',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                       ),
-                      leading: Icon(Icons.power_off, color: Colors.white),
-                      title: Text(
-                        'Turn off the car and get out',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      Divider(height: 10, thickness: 1, color: Colors.white), // Add divider for separation
+                      ListTile(
+                        tileColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
+                        ),
+                        leading: Icon(Icons.sentiment_satisfied_alt, color: Colors.white),
+                        title: Text(
+                          'Stay calm and don\'t panic',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                       ),
-                    ),
-                    Divider(height: 10, thickness: 1), // Add divider for separation
-                    ListTile(
-                      tileColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
-                      ),
-                      leading: Icon(Icons.phone, color: Colors.white),
-                      title: Text(
-                        'Call 911',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
-                    ),
-                    Divider(height: 10, thickness: 1), // Add divider for separation
-                    ListTile(
-                      tileColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0),top: Radius.circular(15.0)),
-                      ),
-                      leading: Icon(Icons.sentiment_satisfied_alt, color: Colors.white),
-                      title: Text(
-                        'Stay calm and don\'t panic',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               SizedBox(height: 20),
             ],
-
           ],
         ),
       ),
