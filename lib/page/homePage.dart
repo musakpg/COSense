@@ -286,32 +286,29 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             SizedBox(height: 10),
-            Material(
-              elevation: 5.0, // Adjust the elevation as needed
-              shadowColor: Colors.black.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(15.0),
-              child:ListTile(
-                tileColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
-                ),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (selectedDataPoint != null) ...[
-                      Text(
-                        'Selected CO Rate: ${selectedDataPoint!.coRate} PPM',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    if (selectedDataPoint != null)
+                      Material(
+                        elevation: 5.0, // Adjust the elevation as needed
+                        shadowColor: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(15.0),
+                        child: ListTile(
+                          tileColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                          ),
+                          title: Text('Selected CO Rate'),
+                          subtitle: Text(
+                              'Rate: ${selectedDataPoint!.coRate} PPM\nTime: ${selectedDataPoint!.time}'),
+                          trailing: IconButton(
+                            icon: Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() {
+                                selectedDataPoint = null;
+                              });
+                            },
+                          ),
+                        ),
                       ),
-                      Text(
-                        'Selected Car State: ${_determineCarState(selectedDataPoint!.coRate)}',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
             if (carState == 'danger' || carState == 'warning') ...[
               SizedBox(height: 20),
               Text(
