@@ -20,8 +20,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Padding(
-          padding: EdgeInsets.only(left: 60.0),
+          padding: EdgeInsets.only(left: 290.0),
           child: Text(
             'Profile Settings',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),

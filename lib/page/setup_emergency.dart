@@ -20,8 +20,9 @@ class _ProfileEditScreenState extends State<EmergencySetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Padding(
-          padding: EdgeInsets.only(left: 0.1),
+          padding: EdgeInsets.only(left: 250.0),
           child: Text(
             'Setup Emergency Contact',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
@@ -35,9 +36,29 @@ class _ProfileEditScreenState extends State<EmergencySetupScreen> {
           children: [
             TextFormField(
               controller: _emergencyNameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Emergency Contact Name',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(
+                    color: Colors.blue,
+                    width: 2.0,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(
+                    color: Colors.blue,
+                    width: 2.0,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(
+                    color: Colors.blue,
+                    width: 2.0,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 10.0),

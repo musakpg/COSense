@@ -56,7 +56,7 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
       appBar: AppBar(
         iconTheme: IconThemeData(color: Colors.white),
         title: Padding(
-          padding: EdgeInsets.only(left: 0.1),
+          padding: EdgeInsets.only(left: 180.0),
           child: Text(
             'Emergency Contacts Settings',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),

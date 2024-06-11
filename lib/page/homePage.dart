@@ -11,7 +11,6 @@ import 'settingProfile.dart';
 import 'settingEmergency.dart';
 import 'adminPage.dart';
 import 'dart:io' show Platform;
-import 'package:intl/intl.dart';
 
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 
@@ -35,11 +34,6 @@ class _HomePageState extends State<HomePage> {
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  String formatTime(DateTime dateTime) {
-    final DateFormat formatter = DateFormat('yyyy-MM-dd HH:mm');
-    return formatter.format(dateTime);
-  }
 
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -92,7 +86,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Padding(
-          padding: EdgeInsets.only(left: 100.0),
+          padding: EdgeInsets.only(left: 290.0),
           child: Text(
             'Carbon Monoxide',
             textAlign: TextAlign.center,
@@ -168,11 +162,6 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Current level',
-                style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.blue),
-              ),
-              SizedBox(height: 10),
               Material(
                 elevation: 5.0,  // Adjust the elevation value as needed
                 shadowColor: Colors.black,  // Black shadow color
@@ -185,6 +174,11 @@ class _HomePageState extends State<HomePage> {
                   title: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        'Current level',
+                        style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.black),
+                      ),
+                      SizedBox(height: 10),
                       Text(
                         'CO',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
@@ -203,7 +197,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              SizedBox(height: 30),
+              SizedBox(height: 20),
               Material(
                 elevation: 5.0,
                 shadowColor: Colors.black,
@@ -217,7 +211,7 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                        height: 300,
+                        height: 450,
                         child: coDataPoints.isNotEmpty
                             ? charts.TimeSeriesChart(
                           _createLineData(coDataPoints),
@@ -294,7 +288,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              SizedBox(height: 10),
+              SizedBox(height: 20),
               if (selectedDataPoint != null)
                 Material(
                   elevation: 5.0, // Adjust the elevation as needed
@@ -320,24 +314,25 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-              if (carState == 'danger' || carState == 'warning') ...[
-                SizedBox(height: 20),
-                Text(
-                  'Actions',
-                  style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.blue),
-                ),
-                SizedBox(height: 10),
-                Material(
-                  elevation: 5.0,  // Adjust the elevation value as needed
-                  shadowColor: Colors.black,  // Black shadow color
-                  borderRadius: BorderRadius.circular(15.0),
-                  child: Card(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15.0),
-                    ),
-                    child: Column(
-                      children: [
+              SizedBox(height: 20.0),
+              Material(
+                elevation: 5.0,  // Adjust the elevation value as needed
+                shadowColor: Colors.black,  // Black shadow color
+                borderRadius: BorderRadius.circular(15.0),
+                child: Card(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                  ),
+                  child: Column(
+                    children: [
+                      if (carState == 'danger' || carState == 'warning') ...[
+                        SizedBox(height: 20),
+                        Text(
+                          'Actions',
+                          style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
+                        SizedBox(height: 10),
                         ListTile(
                           tileColor: Colors.blue,
                           shape: RoundedRectangleBorder(
@@ -369,7 +364,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           leading: Icon(Icons.phone, color: Colors.white),
                           title: Text(
-                            'Call 911',
+                            'Call 999',
                             style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
@@ -386,12 +381,12 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 20),
+              ),
+              SizedBox(height: 20),
               ],
-            ],
           ),
         ),
       ),

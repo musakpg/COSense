@@ -29,7 +29,7 @@ class _SettingProfileState extends State<SettingProfile> {
       appBar: AppBar(
         iconTheme: IconThemeData(color: Colors.white),
         title: Padding(
-          padding: EdgeInsets.only(left: 60.0),
+          padding: EdgeInsets.only(left: 250.0),
           child: Text(
             'Profile Settings',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
