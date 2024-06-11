@@ -54,7 +54,15 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Setup Profile'),
+        iconTheme: IconThemeData(color: Colors.white),
+        title: Padding(
+          padding: EdgeInsets.only(left: 0.1),
+          child: Text(
+            'Emergency Contacts Settings',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+        backgroundColor: Colors.blue,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -74,7 +82,15 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
               onPressed: () {
                 saveEmergencyContacts(); // Call function to save emergency contacts
               },
-              child: const Text('Save'),
+              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 5.0,
+              ),
             ),
           ],
         ),
@@ -104,7 +120,27 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
                 controller: _emergencyNameControllers[index],
                 decoration: InputDecoration(
                   labelText: 'Name',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide(
+                      color: Colors.blue,
+                      width: 2.0,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide(
+                      color: Colors.blue,
+                      width: 2.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide(
+                      color: Colors.blue,
+                      width: 2.0,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 10.0),
@@ -112,7 +148,27 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
                 controller: _emergencyEmailControllers[index],
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide(
+                      color: Colors.blue,
+                      width: 2.0,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide(
+                      color: Colors.blue,
+                      width: 2.0,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide(
+                      color: Colors.blue,
+                      width: 2.0,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 10.0),
@@ -146,7 +202,18 @@ class _EmergencySetupScreenState extends State<EmergencySetupScreen> {
           _emergencyEmailControllers.add(emailController);
         });
       },
-      child: const Text('Add Another Contact'),
+      child: const Text(
+          'Add another contact',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue,
+        padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        elevation: 5.0,
+      ),
     );
   }
 

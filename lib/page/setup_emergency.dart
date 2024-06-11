@@ -20,7 +20,14 @@ class _ProfileEditScreenState extends State<EmergencySetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Setup Profile'),
+        title: Padding(
+          padding: EdgeInsets.only(left: 0.1),
+          child: Text(
+            'Setup Emergency Contact',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+        backgroundColor: Colors.blue,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -36,9 +43,29 @@ class _ProfileEditScreenState extends State<EmergencySetupScreen> {
             const SizedBox(height: 10.0),
             TextFormField(
               controller: _emergencyEmailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Emergency Contact Email',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(
+                    color: Colors.blue,
+                    width: 2.0,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(
+                    color: Colors.blue,
+                    width: 2.0,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(
+                    color: Colors.blue,
+                    width: 2.0,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 10.0),
@@ -46,7 +73,15 @@ class _ProfileEditScreenState extends State<EmergencySetupScreen> {
               onPressed: () {
                 saveEmergencyContact(); // Call function to save emergency contact
               },
-              child: const Text('Save'),
+              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 5.0,
+              ),
             ),
           ],
         ),
