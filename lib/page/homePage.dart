@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sendgrid_mailer/sendgrid_mailer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:workmanager/workmanager.dart';
 import 'signInPage.dart';
 import 'settingProfile.dart';
 import 'settingEmergency.dart';
@@ -43,6 +44,13 @@ class _HomePageState extends State<HomePage> {
     coRate = 0; // Initialize CO rate to 0 PPM
     initFirebase();
     _initializeNotifications();
+
+    Workmanager().registerPeriodicTask(
+      'fetchCoData',
+      'fetchCoDataTask',
+      frequency: Duration(minutes: 15),
+    );
+    _loadDataFromFirestore(); // Load data from Firestore when the app starts
   }
 
   void updateDataPoints(List<CODataPoint> newPoints) {
@@ -54,6 +62,7 @@ class _HomePageState extends State<HomePage> {
         coDataPoints = newPoints;
       }
     });
+    _saveDataToFirestore();
     if (carState == 'danger') {
       _notifyEmergencyContact();
     } else if (carState == 'warning') {
@@ -66,8 +75,6 @@ class _HomePageState extends State<HomePage> {
   String _determineCarState(double coRate) {
     if (coRate < 0.3) {
       return 'safe';
-    } else if (coRate < 1.2) {
-      return 'caution';
     } else if (coRate < 1.7) {
       return 'warning';
     } else {
@@ -78,6 +85,55 @@ class _HomePageState extends State<HomePage> {
   double _calculateChangePercentage(double newRate, double oldRate) {
     if (oldRate == 0) return 0;
     return ((newRate - oldRate) / oldRate) * 100;
+  }
+
+  void _loadDataFromFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userId = user.uid;
+      final coDataPointsRef = _firestore.collection('users').doc(userId).collection('coDataPoints');
+      final snapshot = await coDataPointsRef.orderBy('time', descending: false).get();
+
+      final newPoints = snapshot.docs.map((doc) {
+        final data = doc.data();
+        final timestamp = (data['time'] as Timestamp).toDate(); // Convert Firestore Timestamp to DateTime
+        final coRate = data['coRate'] as double; // Retrieve the double value
+        return CODataPoint(timestamp, coRate);
+      }).toList();
+
+      print("Fetched data points: $newPoints");
+
+      setState(() {
+        coDataPoints = newPoints;
+        if (newPoints.isNotEmpty) {
+          previousCoRate = coRate;
+          coRate = newPoints.last.coRate;
+          carState = _determineCarState(coRate);
+        }
+      });
+
+      print("Updated state with data points: $coDataPoints");
+    }
+  }
+
+  void _saveDataToFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userId = user.uid;
+      final batch = _firestore.batch();
+      final collectionRef = _firestore.collection('users').doc(userId).collection('coDataPoints');
+
+      for (var point in coDataPoints) {
+        final docRef = collectionRef.doc(point.time.toIso8601String());
+        batch.set(docRef, {
+          'time': Timestamp.fromDate(point.time), // Convert DateTime to Firestore Timestamp
+          'coRate': point.coRate, // Store as double
+        });
+      }
+
+      await batch.commit();
+      print("Saved data points to Firestore: $coDataPoints");
+    }
   }
 
   @override
@@ -266,8 +322,6 @@ class _HomePageState extends State<HomePage> {
                                 ? 'Danger'
                                 : carState == 'warning'
                                 ? 'Warning'
-                                : carState == 'caution'
-                                ? 'Caution'
                                 : 'Safe',
                             style: TextStyle(
                               fontSize: 18,
@@ -276,8 +330,6 @@ class _HomePageState extends State<HomePage> {
                                   ? Colors.red
                                   : carState == 'warning'
                                   ? Colors.orange
-                                  : carState == 'caution'
-                                  ? Colors.yellow
                                   : Colors.green,
                             ),
                           ),
@@ -386,7 +438,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               SizedBox(height: 20),
-              ],
+            ],
           ),
         ),
       ),
@@ -456,6 +508,7 @@ class _HomePageState extends State<HomePage> {
           if (coDataPoints.length > 100) {
             coDataPoints.removeAt(0);
           }
+          _saveDataToFirestore();
         });
         if (carState == 'danger') {
           _notifyEmergencyContact();
@@ -634,8 +687,7 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(height: 16),
                     Text(
                       'Safe: CO rate < 0.3 PPM\n'
-                          'Caution: 0.3 <= CO rate < 1.2 PPM\n'
-                          'Warning: 1.2 <= CO rate < 1.7 PPM\n'
+                          'Warning: 0.3 <= CO rate < 1.7 PPM\n'
                           'Danger: CO rate >= 1.7 PPM',
                       style: TextStyle(fontSize: 18, color: Colors.black),
                     ),
