@@ -6,11 +6,18 @@ import 'package:workmanager/workmanager.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fypcosense/page/homePage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   Workmanager().registerPeriodicTask(
     "1",
     "fetchData",

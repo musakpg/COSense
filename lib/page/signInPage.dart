@@ -1,6 +1,7 @@
 // file: lib/page/signInScreen.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fypcosense/page/adminLoginPage.dart';
 import 'package:fypcosense/theme/theme.dart';
 import 'package:fypcosense/page/signUpPage.dart';
 import 'package:fypcosense/page/homePage.dart';
@@ -289,6 +290,28 @@ class _SignInScreenState extends State<SignInScreen> {
                             },
                             child: Text(
                               'Sign up',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: lightColorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (e) => AdminLoginPage(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Admin?',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: lightColorScheme.primary,

@@ -1,11 +1,10 @@
-
 import 'package:flutter/material.dart';
 import 'package:fypcosense/page/signInPage.dart';
 import 'package:fypcosense/page/signUpPage.dart';
+import 'package:fypcosense/page/adminLoginPage.dart'; // Import the AdminLoginPage
 import 'package:fypcosense/theme/theme.dart';
 import 'package:fypcosense/widgets/custom_scaffold.dart';
 import 'package:fypcosense/widgets/welcome_button.dart';
-
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -16,35 +15,37 @@ class WelcomeScreen extends StatelessWidget {
       child: Column(
         children: [
           Flexible(
-              flex: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 0,
-                  horizontal: 40.0,
-                ),
-                child: Center(
-                  child: RichText(
-                    textAlign: TextAlign.center,
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                            text: 'Welcome to\n',
-                            style: TextStyle(
-                              fontSize: 45.0,
-                              fontWeight: FontWeight.w600,
-                            )),
-                        TextSpan(
-                            text:
-                            '\nCOSense',
-                            style: TextStyle(
-                              fontSize: 40,
-                              // height: 0,
-                            ))
-                      ],
-                    ),
+            flex: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                vertical: 0,
+                horizontal: 40.0,
+              ),
+              child: Center(
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Welcome to\n',
+                        style: TextStyle(
+                          fontSize: 45.0,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '\nCOSense',
+                        style: TextStyle(
+                          fontSize: 40,
+                          // height: 0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              )),
+              ),
+            ),
+          ),
           Flexible(
             flex: 1,
             child: Align(
@@ -65,6 +66,25 @@ class WelcomeScreen extends StatelessWidget {
                       onTap: const SignUpScreen(),
                       color: Colors.white,
                       textColor: lightColorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Add Admin Login Button
+          Flexible(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: WelcomeButton(
+                      buttonText: 'Admin Login',
+                      onTap: AdminLoginPage(), // Navigate to AdminLoginPage
+                      color: Colors.red,
+                      textColor: Colors.white,
                     ),
                   ),
                 ],
