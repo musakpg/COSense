@@ -93,6 +93,9 @@ class _AdminPageState extends State<AdminPage> {
                   if (ppm == null || ppm <= 0) {
                     return 'Please enter a valid CO PPM value';
                   }
+                  if (ppm > 1000) {
+                    return 'This number seem unlogic';
+                  }
                   return null;
                 },
               ),

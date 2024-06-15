@@ -7,6 +7,7 @@ import 'package:sendgrid_mailer/sendgrid_mailer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'signInPage.dart';
 import 'settingProfile.dart';
 import 'settingEmergency.dart';
@@ -37,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
   @override
   void initState() {
@@ -44,13 +46,49 @@ class _HomePageState extends State<HomePage> {
     coRate = 0; // Initialize CO rate to 0 PPM
     initFirebase();
     _initializeNotifications();
-
+    _setupFirebaseMessaging();
+    _loadDataFromFirestore(); // Load data from Firestore when the app starts
     Workmanager().registerPeriodicTask(
       'fetchCoData',
       'fetchCoDataTask',
       frequency: Duration(minutes: 15),
     );
-    _loadDataFromFirestore(); // Load data from Firestore when the app starts
+  }
+
+  void _setupFirebaseMessaging() async {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
+        _showNotification(message.notification!);
+      }
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('Message clicked!');
+    });
+
+    String? token = await _firebaseMessaging.getToken();
+    print("FirebaseMessaging token: $token");
+    // Save the token to your backend or Firestore if needed
+  }
+
+  void _showNotification(RemoteNotification notification) async {
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'high_importance_channel', // id
+      'COSense Alert!', // title
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      platformChannelSpecifics,
+    );
   }
 
   void updateDataPoints(List<CODataPoint> newPoints) {
@@ -88,51 +126,59 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _loadDataFromFirestore() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userId = user.uid;
-      final coDataPointsRef = _firestore.collection('users').doc(userId).collection('coDataPoints');
-      final snapshot = await coDataPointsRef.orderBy('time', descending: false).get();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userId = user.uid;
+        final coDataPointsRef = _firestore.collection('users').doc(userId).collection('coDataPoints');
+        final snapshot = await coDataPointsRef.orderBy('time', descending: false).get();
 
-      final newPoints = snapshot.docs.map((doc) {
-        final data = doc.data();
-        final timestamp = (data['time'] as Timestamp).toDate(); // Convert Firestore Timestamp to DateTime
-        final coRate = data['coRate'] as double; // Retrieve the double value
-        return CODataPoint(timestamp, coRate);
-      }).toList();
+        final newPoints = snapshot.docs.map((doc) {
+          final data = doc.data();
+          final timestamp = (data['time'] as Timestamp).toDate(); // Convert Firestore Timestamp to DateTime
+          final coRate = (data['coRate'] as num).toDouble(); // Retrieve the value and cast to double
+          return CODataPoint(timestamp, coRate);
+        }).toList();
 
-      print("Fetched data points: $newPoints");
+        print("Fetched data points: $newPoints");
 
-      setState(() {
-        coDataPoints = newPoints;
-        if (newPoints.isNotEmpty) {
-          previousCoRate = coRate;
-          coRate = newPoints.last.coRate;
-          carState = _determineCarState(coRate);
-        }
-      });
+        setState(() {
+          coDataPoints = newPoints;
+          if (newPoints.isNotEmpty) {
+            previousCoRate = coRate;
+            coRate = newPoints.last.coRate;
+            carState = _determineCarState(coRate);
+          }
+        });
 
-      print("Updated state with data points: $coDataPoints");
+        print("Updated state with data points: $coDataPoints");
+      }
+    } catch (e) {
+      print('Error loading data from Firestore: $e');
     }
   }
 
   void _saveDataToFirestore() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userId = user.uid;
-      final batch = _firestore.batch();
-      final collectionRef = _firestore.collection('users').doc(userId).collection('coDataPoints');
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userId = user.uid;
+        final batch = _firestore.batch();
+        final collectionRef = _firestore.collection('users').doc(userId).collection('coDataPoints');
 
-      for (var point in coDataPoints) {
-        final docRef = collectionRef.doc(point.time.toIso8601String());
-        batch.set(docRef, {
-          'time': Timestamp.fromDate(point.time), // Convert DateTime to Firestore Timestamp
-          'coRate': point.coRate, // Store as double
-        });
+        for (var point in coDataPoints) {
+          final docRef = collectionRef.doc(point.time.toIso8601String());
+          batch.set(docRef, {
+            'time': Timestamp.fromDate(point.time), // Convert DateTime to Firestore Timestamp
+            'coRate': point.coRate, // Store as double
+          });
+        }
+
+        await batch.commit();
+        print("Saved data points to Firestore: $coDataPoints");
       }
-
-      await batch.commit();
-      print("Saved data points to Firestore: $coDataPoints");
+    } catch (e) {
+      print('Error saving data to Firestore: $e');
     }
   }
 
@@ -144,7 +190,7 @@ class _HomePageState extends State<HomePage> {
         title: Padding(
           padding: EdgeInsets.only(left: 290.0),
           child: Text(
-            'Carbon Monoxide',
+            'COSense',
             textAlign: TextAlign.center,
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
@@ -664,7 +710,7 @@ class _HomePageState extends State<HomePage> {
   void _showThresholdsDialog(BuildContext context) {
     showGeneralDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       barrierLabel: 'Barrier',
       barrierColor: Colors.black.withOpacity(0.5),
       transitionDuration: Duration(milliseconds: 200),
@@ -680,9 +726,20 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'CO Level Thresholds',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'CO Level Thresholds',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.blue),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ],
                     ),
                     SizedBox(height: 16),
                     Text(
