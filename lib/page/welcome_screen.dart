@@ -72,25 +72,6 @@ class WelcomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Add Admin Login Button
-          Flexible(
-            flex: 1,
-            child: Align(
-              alignment: Alignment.bottomRight,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: WelcomeButton(
-                      buttonText: 'Admin Login',
-                      onTap: AdminLoginPage(), // Navigate to AdminLoginPage
-                      color: Colors.red,
-                      textColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

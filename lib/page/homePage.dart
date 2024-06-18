@@ -187,12 +187,25 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Padding(
-          padding: EdgeInsets.only(left: 290.0),
+        title: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AdminPage(
+                  onUpdateData: updateDataPoints,
+                  initialDataPoints: coDataPoints,
+                ),
+              ),
+            );
+          },
           child: Text(
             'COSense',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
             textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ),
         backgroundColor: Colors.blue,
@@ -227,17 +240,6 @@ class _HomePageState extends State<HomePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => EmergencySetupScreen()),
-                            );
-                          },
-                        ),
-                        ListTile(
-                          leading: Icon(Icons.admin_panel_settings, color: Colors.blue),
-                          title: Text('Admin Page', style: TextStyle(color: Colors.blue)),
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => AdminPage(onUpdateData: updateDataPoints, initialDataPoints: coDataPoints)),
                             );
                           },
                         ),
@@ -491,8 +493,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String emergencyName, String userName) async {
-    final mailer = Mailer('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');
+  Future<void> sendEmail(_HomePageState state, String userEmail, String emergencyEmail, String emergencyName, String userName, String userPhoneNumber) async {
+    final mailer = Mailer('');
     final toAddress = Address(emergencyEmail);
     final fromAddress = Address(userEmail);
     final latitude = state.latitude;
@@ -511,6 +513,7 @@ class _HomePageState extends State<HomePage> {
             <h2 style="color: red;">URGENT: COSense Alert</h2>
             <p>Attention to <b>$emergencyName</b>,</p>
             <p><b style="color: red;">$userName's vehicle is in danger.</b></p>
+            <p><b>$userName Phone Number:</b> $userPhoneNumber</p>
             <p><b>Vehicle CO Rate:</b> <span style="color: red;">$coRateValue PPM (danger level)</span></p>
             <p><b>Current Location of the Car:</b> <a href="$locationLink">Open in Maps</a></p>
             <p><b>Latitude:</b> $latitude</p>
@@ -536,9 +539,11 @@ class _HomePageState extends State<HomePage> {
     print('Emergency contact is: $emergencyEmail');
     print('User contact is: $userEmail');
     print('User name is: $userName');
+    print('User phone number is: $userPhoneNumber');
     print('CO Rate: $coRateValue PPM');
     print('Latitude: $latitude, Longitude: $longitude');
   }
+
 
   Future<void> initFirebase() async {
     try {
@@ -675,12 +680,13 @@ class _HomePageState extends State<HomePage> {
         if (userSnapshot.exists) {
           final userName = userSnapshot.data()?['profile']['name'] ?? '';
           final userEmail = user.email ?? '';
+          final userPhoneNumber = userSnapshot.data()?['profile']['phoneNumber'] ?? '';
           final emergencyContacts = userSnapshot.data()?['emergencyContacts'] ?? [];
 
           for (var contact in emergencyContacts) {
             final contactEmail = contact['email'] ?? '';
             final contactName = contact['name'] ?? ''; // Extract the emergency contact's name
-            sendEmail(this, userEmail, contactEmail, contactName, userName); // Pass the emergency contact's name
+            sendEmail(this, userEmail, contactEmail, contactName, userName, userPhoneNumber); // Pass the emergency contact's name and user phone number
           }
 
           if (emergencyContacts.isEmpty) {
@@ -694,6 +700,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
+
 
   Future<void> _signOut() async {
     try {
