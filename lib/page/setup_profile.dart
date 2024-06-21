@@ -127,10 +127,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   void saveProfileData() async {
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid; // Get the user ID
+      print("User ID: $userId"); // Debug statement
       final userDocRef = _firestore.collection('users').doc(userId);
 
       // Add the user's name and phone number
-      final profileData ={
+      final profileData = {
         'name': _nameController.text,
         'phoneNumber': _phoneNumberController.text,
       };
@@ -138,6 +139,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       await userDocRef.set({
         'profile': profileData,
       });
+      print("Profile data saved"); // Debug statement
+
       // Show a success message or navigate to another screen
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -145,8 +148,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           duration: Duration(seconds: 2),
         ),
       );
+
       // Navigate to setup_emergency screen after the snackbar disappears
-      // (assuming you have a navigation function or a route defined)
       Future.delayed(const Duration(seconds: 2), () {
         Navigator.push(
           context,

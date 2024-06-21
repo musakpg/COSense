@@ -109,20 +109,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 20.0),
-              Row(
-                children: [
-                  Checkbox(
-                    value: agreePersonalData,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        agreePersonalData = value ?? false;
-                      });
-                    },
-                  ),
-                  const Text('I agree to the processing of Personal data'),
-                ],
-              ),
-              const SizedBox(height: 20.0),
               ElevatedButton(
                 onPressed: _signUp,
                 child: const Text('Sign Up'),

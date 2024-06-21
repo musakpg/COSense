@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:charts_flutter/flutter.dart' as charts;
+import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:intl/intl.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -13,8 +14,10 @@ import 'settingProfile.dart';
 import 'settingEmergency.dart';
 import 'adminPage.dart';
 import 'dart:io' show Platform;
+import 'Noti.dart';
 
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -37,21 +40,38 @@ class _HomePageState extends State<HomePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+
+  late List<CODataPoint> _chartData;
+  late TooltipBehavior _tooltipBehavior;
+  late ZoomPanBehavior _zoomPanBehavior;
 
   @override
   void initState() {
     super.initState();
+    Noti.initialize(flutterLocalNotificationsPlugin);
     coRate = 0; // Initialize CO rate to 0 PPM
     initFirebase();
-    _initializeNotifications();
     _setupFirebaseMessaging();
     _loadDataFromFirestore(); // Load data from Firestore when the app starts
     Workmanager().registerPeriodicTask(
       'fetchCoData',
       'fetchCoDataTask',
       frequency: Duration(minutes: 15),
+    );
+
+    _chartData = getChartData();
+    _tooltipBehavior = TooltipBehavior(enable: true);
+    _zoomPanBehavior = ZoomPanBehavior(
+      enablePinching: true,
+      enableDoubleTapZooming: true,
+      enableSelectionZooming: true,
+      selectionRectBorderColor: Colors.red,
+      selectionRectBorderWidth: 2,
+      selectionRectColor: Colors.grey,
+      enablePanning: true,
+      zoomMode: ZoomMode.x,
+      enableMouseWheelZooming: true,
     );
   }
 
@@ -105,8 +125,6 @@ class _HomePageState extends State<HomePage> {
       _notifyEmergencyContact();
     } else if (carState == 'warning') {
       _showWarningAlert();
-    } else if (carState == 'caution') {
-      _showCautionNotification();
     }
   }
 
@@ -283,19 +301,49 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.black),
                       ),
                       SizedBox(height: 10),
-                      Text(
-                        'CO',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'CO',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                            ),
+                          ],
+                        ),
                       ),
                       SizedBox(height: 5),
-                      Text(
-                        '${coRate.toStringAsFixed(2)} PPM',
-                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '${coRate.toStringAsFixed(2)}',
+                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                            TextSpan(
+                              text: ' PPM',
+                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
+                            ),
+                          ],
+                        ),
                       ),
                       SizedBox(height: 5),
-                      Text(
-                        'Now ${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}%',
-                        style: TextStyle(fontSize: 18, color: Colors.blue),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Now ',
+                              style: TextStyle(fontSize: 18, color: Colors.black),
+                            ),
+                            TextSpan(
+                              text: '${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}',
+                              style: TextStyle(fontSize: 18, color: Colors.blue),
+                            ),
+                            TextSpan(
+                              text: '%',
+                              style: TextStyle(fontSize: 18, color: Colors.black),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -317,44 +365,39 @@ class _HomePageState extends State<HomePage> {
                       SizedBox(
                         height: 450,
                         child: coDataPoints.isNotEmpty
-                            ? charts.TimeSeriesChart(
-                          _createLineData(coDataPoints),
-                          animate: true,
-                          dateTimeFactory: const charts.LocalDateTimeFactory(),
-                          primaryMeasureAxis: charts.NumericAxisSpec(
-                            renderSpec: charts.GridlineRendererSpec(
-                              labelStyle: charts.TextStyleSpec(
-                                fontSize: 10,
-                                color: charts.MaterialPalette.black,
-                              ),
-                              lineStyle: charts.LineStyleSpec(
-                                thickness: 0,
-                                color: charts.MaterialPalette.transparent,
-                              ),
-                            ),
+                            ? SfCartesianChart(
+                          title: ChartTitle(text: 'CO Data Analysis'),
+                          legend: Legend(isVisible: true),
+                          tooltipBehavior: _tooltipBehavior,
+                          zoomPanBehavior: _zoomPanBehavior,
+                          primaryXAxis: DateTimeAxis(
+                            edgeLabelPlacement: EdgeLabelPlacement.shift,
+                            dateFormat: DateFormat.yMMMd(),
+                            intervalType: DateTimeIntervalType.auto,
+                            interactiveTooltip: InteractiveTooltip(enable: false),
+                            zoomFactor: calculateZoomFactor(),
+                            zoomPosition: 0,
+                            majorGridLines: MajorGridLines(width: 0), // Remove X-axis grid lines
                           ),
-                          domainAxis: charts.DateTimeAxisSpec(
-                            renderSpec: charts.SmallTickRendererSpec(
-                              labelStyle: charts.TextStyleSpec(
-                                fontSize: 10,
-                                color: charts.MaterialPalette.black,
-                              ),
-                              lineStyle: charts.LineStyleSpec(
-                                thickness: 0,
-                                color: charts.MaterialPalette.transparent,
-                              ),
-                            ),
+                          primaryYAxis: NumericAxis(
+                            labelFormat: '{value} PPM',
+                            numberFormat: NumberFormat.compact(),
+                            interactiveTooltip: InteractiveTooltip(enable: false),
+                            majorGridLines: MajorGridLines(width: 0), // Remove Y-axis grid lines
                           ),
-                          defaultRenderer: charts.LineRendererConfig(
-                            includeArea: true,
-                            stacked: false,
-                            areaOpacity: 0.2,
-                            strokeWidthPx: 2.0,
-                          ),
-                          selectionModels: [
-                            charts.SelectionModelConfig(
-                              type: charts.SelectionModelType.info,
-                              changedListener: _onSelectionChanged,
+                          series: <ChartSeries>[
+                            LineSeries<CODataPoint, DateTime>(
+                              name: 'CO Data',
+                              dataSource: coDataPoints,
+                              xValueMapper: (CODataPoint point, _) => point.time,
+                              yValueMapper: (CODataPoint point, _) => point.coRate,
+                              dataLabelSettings: DataLabelSettings(isVisible: true),
+                              enableTooltip: true,
+                              onPointTap: (ChartPointDetails details) {
+                                setState(() {
+                                  selectedDataPoint = coDataPoints[details.pointIndex!];
+                                });
+                              },
                             ),
                           ],
                         )
@@ -399,10 +442,28 @@ class _HomePageState extends State<HomePage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15.0),
                     ),
-                    title: Text('Selected CO Rate', style: TextStyle(color: Colors.blue)),
-                    subtitle: Text(
-                      'Rate: ${selectedDataPoint!.coRate} PPM\nTime: ${selectedDataPoint!.time}',
-                      style: TextStyle(color: Colors.black),
+                    title: Text('Selected Data Point', style: TextStyle(color: Colors.blue)),
+                    subtitle: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Rate: ',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                          ),
+                          TextSpan(
+                            text: '${selectedDataPoint!.coRate.toStringAsFixed(2)} PPM\n',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          TextSpan(
+                            text: 'Time: ',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                          ),
+                          TextSpan(
+                            text: '${DateFormat.yMMMd().add_Hms().format(selectedDataPoint!.time)}',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ],
+                      ),
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.clear, color: Colors.blue),
@@ -544,7 +605,6 @@ class _HomePageState extends State<HomePage> {
     print('Latitude: $latitude, Longitude: $longitude');
   }
 
-
   Future<void> initFirebase() async {
     try {
       await Firebase.initializeApp();
@@ -565,8 +625,6 @@ class _HomePageState extends State<HomePage> {
           _notifyEmergencyContact();
         } else if (carState == 'warning') {
           _showWarningAlert();
-        } else if (carState == 'caution') {
-          _showCautionNotification();
         }
       });
 
@@ -587,11 +645,6 @@ class _HomePageState extends State<HomePage> {
       print('Error initializing Firebase: $e');
       // Optionally, show an error dialog or message to the user
     }
-  }
-
-  void _initializeNotifications() async {
-    const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
   void _showInAppNotification() async {
@@ -630,6 +683,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showWarningAlert() {
+    Noti.showBigTextNotification(title: "Attention: Carbon Monoxide Alert", body: "Your vehicle's CO levels are elevated. Inspect your car with mechanic if possible.", fln: flutterLocalNotificationsPlugin);
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -649,26 +703,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showCautionNotification() async {
-    print('Caution state reached. Showing caution notification.');
-    const notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'caution_co_channel',
-        'CO Level Caution',
-        channelDescription: 'Elevated CO level detected in your car.',
-        importance: Importance.low,
-        priority: Priority.low,
-        ticker: 'CO Caution',
-      ),
-    );
-
-    await flutterLocalNotificationsPlugin.show(1, 'Elevated CO Level Detected', 'Please be cautious.', notificationDetails);
-  }
-
   Future<void> _notifyEmergencyContact() async {
     print('CO rate exceeded 1.7 ppm. Notifying emergency contact...');
     _showInAppNotification();
     _showLocalAlert();
+    Noti.showBigTextNotification(title: "DANGER: High CO Level in Vehicle", body: "Evacuate vehicle immediately! Open windows and seek fresh air.", fln: flutterLocalNotificationsPlugin);
 
     final user = FirebaseAuth.instance.currentUser;
 
@@ -700,7 +739,6 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
-
 
   Future<void> _signOut() async {
     try {
@@ -769,30 +807,21 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context, rootNavigator: true).pop();
   }
 
-  void _onSelectionChanged(charts.SelectionModel model) {
-    final selectedDatum = model.selectedDatum;
-    if (selectedDatum.isNotEmpty) {
-      final CODataPoint dataPoint = selectedDatum.first.datum;
-      setState(() {
-        selectedDataPoint = dataPoint;
-      });
-    } else {
-      setState(() {
-        selectedDataPoint = null;
-      });
-    }
+  List<CODataPoint> getChartData() {
+    return coDataPoints;
   }
 
-  List<charts.Series<CODataPoint, DateTime>> _createLineData(List<CODataPoint> dataPoints) {
-    return [
-      charts.Series<CODataPoint, DateTime>(
-        id: 'CO Data',
-        domainFn: (CODataPoint point, _) => point.time,
-        measureFn: (CODataPoint point, _) => point.coRate,
-        data: dataPoints,
-        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
-      )
-    ];
+  double calculateZoomFactor() {
+    if (coDataPoints.isEmpty) return 1.0;
+
+    final totalDuration = coDataPoints.last.time.difference(coDataPoints.first.time).inMinutes;
+    final oneHourInMinutes = 60;
+
+    if (totalDuration == 0) {
+      return 1.0;
+    }
+
+    return (totalDuration > oneHourInMinutes) ? oneHourInMinutes / totalDuration : 1.0;
   }
 }
 

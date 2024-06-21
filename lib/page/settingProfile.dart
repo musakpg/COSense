@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'homePage.dart';
+
 class SettingProfile extends StatefulWidget {
   const SettingProfile({Key? key}) : super(key: key);
 
@@ -169,6 +171,10 @@ class _SettingProfileState extends State<SettingProfile> {
           content: Text('Profile updated successfully!'),
           duration: Duration(seconds: 2),
         ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage())
       );
     } catch (e) {
       print('Error saving profile data: $e');
