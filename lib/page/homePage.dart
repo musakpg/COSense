@@ -19,6 +19,11 @@ import 'Noti.dart';
 const initializationSettingsAndroid = AndroidInitializationSettings('icon');
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
+// Define custom colors for car states
+const Color safeColor = Color(0xFF4CAF50); // Green
+const Color warningColor = Color(0xFFFFC107); // Amber
+const Color dangerColor = Color(0xFFF44336); // Red
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -144,6 +149,11 @@ class _HomePageState extends State<HomePage> {
   double _calculateChangePercentage(double newRate, double oldRate) {
     if (oldRate == 0) return 0;
     return ((newRate - oldRate) / oldRate) * 100;
+  }
+
+  double _getPeakLevel() {
+    if (coDataPoints.isEmpty) return 0;
+    return coDataPoints.map((point) => point.coRate).reduce((a, b) => a > b ? a : b);
   }
 
   void _loadDataFromFirestore() async {
@@ -327,70 +337,178 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Material(
-                elevation: 5.0,  // Adjust the elevation value as needed
-                shadowColor: Colors.black,  // Black shadow color
-                borderRadius: BorderRadius.circular(15.0),
-                child: ListTile(
-                  tileColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                        elevation: 5.0,  // Adjust the elevation value as needed
+                        shadowColor: Colors.black,  // Black shadow color
+                        borderRadius: BorderRadius.circular(15.0),
+                        child: Container(
+                          height: 100,
+                          child: ListTile(
+                            tileColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+                            ),
+                            title: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Current Level',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                                ),
+                                SizedBox(height: 5),
+                                RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '${coRate.toStringAsFixed(2)}',
+                                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                                      ),
+                                      TextSpan(
+                                        text: ' ppm',
+                                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                    ),
                   ),
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current level',
-                        style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold, color: Colors.black),
-                      ),
-                      SizedBox(height: 10),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'CO',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Material(
+                        elevation: 5.0,  // Adjust the elevation value as needed
+                        shadowColor: Colors.black,  // Black shadow color
+                        borderRadius: BorderRadius.circular(15.0),
+                        child: Container(
+                          height: 100,
+                          child: ListTile(
+                            tileColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
                             ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '${coRate.toStringAsFixed(2)}',
-                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                            title: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Peak Level',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                                ),
+                                SizedBox(height: 5),
+                                RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '${_getPeakLevel().toStringAsFixed(2)}',
+                                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                                      ),
+                                      TextSpan(
+                                        text: ' ppm',
+                                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            TextSpan(
-                              text: ' PPM',
-                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'Now ',
-                              style: TextStyle(fontSize: 18, color: Colors.black),
-                            ),
-                            TextSpan(
-                              text: '${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}',
-                              style: TextStyle(fontSize: 18, color: Colors.blue),
-                            ),
-                            TextSpan(
-                              text: '%',
-                              style: TextStyle(fontSize: 18, color: Colors.black),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        )
+                    ),
                   ),
-                ),
+                ],
+              ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      elevation: 5.0,  // Adjust the elevation value as needed
+                      shadowColor: Colors.black,  // Black shadow color
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Container(
+                        height: 100, // Set the height to be the same for both containers
+                        child: ListTile(
+                          tileColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+                          ),
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Percentage Change',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                              ),
+                              SizedBox(height: 5),
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '${_calculateChangePercentage(coRate, previousCoRate).toStringAsFixed(2)}',
+                                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue),
+                                    ),
+                                    TextSpan(
+                                      text: ' %',
+                                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Material(
+                      elevation: 5.0,  // Adjust the elevation value as needed
+                      shadowColor: Colors.black,  // Black shadow color
+                      borderRadius: BorderRadius.circular(15.0),
+                      child: Container(
+                        height: 100, // Set the height to be the same for both containers
+                        child: ListTile(
+                          tileColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
+                          ),
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Status',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                carState == 'danger'
+                                    ? 'Danger'
+                                    : carState == 'warning'
+                                    ? 'Warning'
+                                    : 'Safe',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: carState == 'danger'
+                                      ? dangerColor
+                                      : carState == 'warning'
+                                      ? warningColor
+                                      : safeColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 20),
               Material(
@@ -408,12 +526,9 @@ class _HomePageState extends State<HomePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          TextButton(
+                          IconButton(
                             onPressed: () => _selectDate(context),
-                            child: Text(
-                              'Select Date',
-                              style: TextStyle(color: Colors.blue, fontSize: 16),
-                            ),
+                            icon: Icon(Icons.calendar_today, color: Colors.blue),
                           ),
                           TextButton(
                             onPressed: _showAllData,
@@ -429,7 +544,14 @@ class _HomePageState extends State<HomePage> {
                         child: coDataPoints.isNotEmpty
                             ? SfCartesianChart(
                           key: _chartKey,
-                          title: ChartTitle(text: 'CO Data Analysis'),
+                          title: ChartTitle(
+                            text: 'CO Data Analysis',
+                            textStyle: TextStyle(
+                              fontSize: 18, // Adjust the font size as needed
+                              fontWeight: FontWeight.bold, // Make the text bold
+                              color: Colors.black, // Set the color to black or any other color you prefer
+                            ),
+                          ),
                           legend: Legend(isVisible: true),
                           tooltipBehavior: _tooltipBehavior,
                           zoomPanBehavior: _zoomPanBehavior,
@@ -448,6 +570,7 @@ class _HomePageState extends State<HomePage> {
                             interactiveTooltip: InteractiveTooltip(enable: false),
                             majorGridLines: MajorGridLines(width: 0), // Remove Y-axis grid lines
                           ),
+                          plotAreaBorderWidth: 0, // Remove the border around the chart
                           series: <ChartSeries>[
                             LineSeries<CODataPoint, DateTime>(
                               name: 'CO Data',
@@ -481,10 +604,10 @@ class _HomePageState extends State<HomePage> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: carState == 'danger'
-                                  ? Colors.red
+                                  ? dangerColor
                                   : carState == 'warning'
-                                  ? Colors.orange
-                                  : Colors.green,
+                                  ? warningColor
+                                  : safeColor,
                             ),
                           ),
                         ),
@@ -505,28 +628,38 @@ class _HomePageState extends State<HomePage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15.0),
                     ),
-                    title: Text('Selected Data Point', style: TextStyle(color: Colors.blue)),
-                    subtitle: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Rate: ',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                          ),
-                          TextSpan(
-                            text: '${selectedDataPoint!.coRate.toStringAsFixed(2)} PPM\n',
-                            style: TextStyle(color: Colors.black),
-                          ),
-                          TextSpan(
-                            text: 'Time: ',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                          ),
-                          TextSpan(
-                            text: '${DateFormat.yMMMd().add_Hms().format(selectedDataPoint!.time)}',
-                            style: TextStyle(color: Colors.black),
-                          ),
-                        ],
+                    title: Text(
+                      'Selected Data Point',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: TextStyle(color: Colors.black),
+                            children: [
+                              TextSpan(
+                                text: 'Rate: ',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(
+                                text: '${selectedDataPoint!.coRate.toStringAsFixed(2)} PPM\n',
+                              ),
+                              TextSpan(
+                                text: 'Time: ',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(
+                                text: '${DateFormat.yMMMd().add_Hms().format(selectedDataPoint!.time)}',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.clear, color: Colors.blue),
@@ -539,18 +672,18 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               SizedBox(height: 20.0),
-              Material(
-                elevation: 5.0, // Adjust the elevation value as needed
-                shadowColor: Colors.black, // Black shadow color
-                borderRadius: BorderRadius.circular(15.0),
-                child: Card(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                  ),
-                  child: Column(
-                    children: [
-                      if (carState == 'danger' || carState == 'warning') ...[
+              if (carState == 'danger' || carState == 'warning')
+                Material(
+                  elevation: 5.0, // Adjust the elevation value as needed
+                  shadowColor: Colors.black, // Black shadow color
+                  borderRadius: BorderRadius.circular(15.0),
+                  child: Card(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    child: Column(
+                      children: [
                         SizedBox(height: 20),
                         Text(
                           'Actions',
@@ -572,7 +705,7 @@ class _HomePageState extends State<HomePage> {
                         ListTile(
                           tileColor: Colors.blue,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0), top: Radius.circular(15.0)),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
                           ),
                           leading: Icon(Icons.power_off, color: Colors.white),
                           title: Text(
@@ -584,7 +717,7 @@ class _HomePageState extends State<HomePage> {
                         ListTile(
                           tileColor: Colors.blue,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0), top: Radius.circular(15.0)),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
                           ),
                           leading: Icon(Icons.phone, color: Colors.white),
                           title: Text(
@@ -596,7 +729,7 @@ class _HomePageState extends State<HomePage> {
                         ListTile(
                           tileColor: Colors.blue,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(15.0), top: Radius.circular(15.0)),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(15.0), bottom: Radius.circular(15.0)),
                           ),
                           leading: Icon(Icons.sentiment_satisfied_alt, color: Colors.white),
                           title: Text(
@@ -605,10 +738,9 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
               SizedBox(height: 20),
             ],
           ),
@@ -850,11 +982,50 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                     SizedBox(height: 16),
-                    Text(
-                      'Safe: CO rate < 0.3 PPM\n'
-                          'Warning: 0.3 <= CO rate < 1.7 PPM\n'
-                          'Danger: CO rate >= 1.7 PPM',
-                      style: TextStyle(fontSize: 18, color: Colors.black),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.0),
+                        color: Colors.grey.shade200,
+                        border: Border.all(
+                          color: carState == 'danger'
+                              ? dangerColor
+                              : carState == 'warning'
+                              ? warningColor
+                              : safeColor,
+                          width: 2.0,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Safe: CO rate < 0.3 PPM',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: safeColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Warning: 0.3 <= CO rate < 1.7 PPM',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: warningColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Danger: CO rate >= 1.7 PPM',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: dangerColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
