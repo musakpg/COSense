@@ -372,8 +372,8 @@ class _HomePageState extends State<HomePage> {
                           zoomPanBehavior: _zoomPanBehavior,
                           primaryXAxis: DateTimeAxis(
                             edgeLabelPlacement: EdgeLabelPlacement.shift,
-                            dateFormat: DateFormat.yMMMd(),
-                            intervalType: DateTimeIntervalType.auto,
+                            dateFormat: DateFormat('MMM d, H:mm'), // Date and hour to hour format
+                            intervalType: DateTimeIntervalType.hours, // Set the interval type to hours
                             interactiveTooltip: InteractiveTooltip(enable: false),
                             zoomFactor: calculateZoomFactor(),
                             zoomPosition: 0,
