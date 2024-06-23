@@ -35,6 +35,8 @@ class _HomePageState extends State<HomePage> {
   double longitude = 0;
 
   CODataPoint? selectedDataPoint;
+  DateTime? selectedDate;
+  bool showAllData = false;
 
   late FirebaseDatabase database;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -45,6 +47,7 @@ class _HomePageState extends State<HomePage> {
   late List<CODataPoint> _chartData;
   late TooltipBehavior _tooltipBehavior;
   late ZoomPanBehavior _zoomPanBehavior;
+  final GlobalKey<SfCartesianChartState> _chartKey = GlobalKey();
 
   @override
   void initState() {
@@ -198,6 +201,46 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       print('Error saving data to Firestore: $e');
     }
+  }
+
+  DateTime _getVisibleMinimum() {
+    if (showAllData || selectedDate == null || coDataPoints.isEmpty) {
+      return coDataPoints.isNotEmpty ? coDataPoints.first.time : DateTime.now();
+    }
+    final startOfDay = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day);
+    return startOfDay;
+  }
+
+  DateTime _getVisibleMaximum() {
+    if (showAllData || selectedDate == null || coDataPoints.isEmpty) {
+      return coDataPoints.isNotEmpty ? coDataPoints.last.time : DateTime.now();
+    }
+    final startOfNextDay = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day + 1);
+    return startOfNextDay;
+  }
+
+  void _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2021),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+        showAllData = false;
+        _zoomPanBehavior.reset(); // Reset zoom and pan state before setting new visible range
+      });
+    }
+  }
+
+  void _showAllData() {
+    setState(() {
+      showAllData = true;
+      selectedDate = null;
+      _zoomPanBehavior.reset(); // Reset zoom and pan state to show all data
+    });
   }
 
   @override
@@ -362,10 +405,30 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () => _selectDate(context),
+                            child: Text(
+                              'Select Date',
+                              style: TextStyle(color: Colors.blue, fontSize: 16),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _showAllData,
+                            child: Text(
+                              'Overview',
+                              style: TextStyle(color: Colors.blue, fontSize: 16),
+                            ),
+                          ),
+                        ],
+                      ),
                       SizedBox(
                         height: 450,
                         child: coDataPoints.isNotEmpty
                             ? SfCartesianChart(
+                          key: _chartKey,
                           title: ChartTitle(text: 'CO Data Analysis'),
                           legend: Legend(isVisible: true),
                           tooltipBehavior: _tooltipBehavior,
@@ -374,9 +437,9 @@ class _HomePageState extends State<HomePage> {
                             edgeLabelPlacement: EdgeLabelPlacement.shift,
                             dateFormat: DateFormat('MMM d, H:mm'), // Date and hour to hour format
                             intervalType: DateTimeIntervalType.hours, // Set the interval type to hours
+                            visibleMinimum: _getVisibleMinimum(),
+                            visibleMaximum: _getVisibleMaximum(),
                             interactiveTooltip: InteractiveTooltip(enable: false),
-                            zoomFactor: calculateZoomFactor(),
-                            zoomPosition: 0,
                             majorGridLines: MajorGridLines(width: 0), // Remove X-axis grid lines
                           ),
                           primaryYAxis: NumericAxis(
@@ -477,8 +540,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               SizedBox(height: 20.0),
               Material(
-                elevation: 5.0,  // Adjust the elevation value as needed
-                shadowColor: Colors.black,  // Black shadow color
+                elevation: 5.0, // Adjust the elevation value as needed
+                shadowColor: Colors.black, // Black shadow color
                 borderRadius: BorderRadius.circular(15.0),
                 child: Card(
                   color: Colors.white,
@@ -809,19 +872,6 @@ class _HomePageState extends State<HomePage> {
 
   List<CODataPoint> getChartData() {
     return coDataPoints;
-  }
-
-  double calculateZoomFactor() {
-    if (coDataPoints.isEmpty) return 1.0;
-
-    final totalDuration = coDataPoints.last.time.difference(coDataPoints.first.time).inMinutes;
-    final oneHourInMinutes = 60;
-
-    if (totalDuration == 0) {
-      return 1.0;
-    }
-
-    return (totalDuration > oneHourInMinutes) ? oneHourInMinutes / totalDuration : 1.0;
   }
 }
 
